@@ -1,0 +1,332 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Calculator</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Calculator">
+<meta name="theme-color" content="#000000">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="manifest" href="manifest.webmanifest">
+<style>
+  :root {
+    --bg: #000;
+    --num: #333;
+    --num-on: #737373;
+    --fn: #a5a5a5;
+    --fn-on: #d9d9d9;
+    --op: #ff9f0a;
+    --op-on: #fcc78d;
+    --gap: 14px;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; height: 100%;
+    background: var(--bg); color: #fff;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", Arial, sans-serif;
+    overscroll-behavior: none;
+    -webkit-user-select: none; user-select: none;
+    touch-action: manipulation;
+  }
+  .app {
+    height: 100%;
+    max-width: 440px; margin: 0 auto;
+    display: flex; flex-direction: column; justify-content: flex-end;
+    padding: env(safe-area-inset-top) 16px calc(env(safe-area-inset-bottom) + 20px);
+  }
+  .display {
+    font-weight: 300;
+    text-align: right;
+    white-space: nowrap;
+    overflow: hidden;
+    padding: 0 8px;
+    line-height: 1.1;
+    font-size: 88px;
+    margin-bottom: 8px;
+    font-variant-numeric: tabular-nums;
+  }
+  .keys {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--gap);
+  }
+  button {
+    appearance: none; border: 0; padding: 0; margin: 0;
+    font: inherit; color: #fff;
+    aspect-ratio: 1;
+    border-radius: 999px;
+    font-size: clamp(28px, 9vw, 38px);
+    font-weight: 400;
+    background: var(--num);
+    cursor: pointer;
+    transition: background-color .25s ease-out;
+    touch-action: manipulation;
+  }
+  button:active, button.pressed { transition: none; }
+  button.num:active, button.num.pressed { background: var(--num-on); }
+  button.fn { background: var(--fn); color: #000; font-size: clamp(24px, 8vw, 32px); font-weight: 500; }
+  button.fn:active, button.fn.pressed { background: var(--fn-on); }
+  button.op { background: var(--op); font-size: clamp(30px, 10vw, 42px); }
+  button.op:active, button.op.pressed { background: var(--op-on); }
+  button.op.selected { background: #fff; color: var(--op); }
+  button.zero {
+    grid-column: span 2;
+    aspect-ratio: auto;
+    text-align: left;
+    padding-left: 11%;
+  }
+  button:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+</style>
+</head>
+<body>
+<main class="app">
+  <div class="display" id="display" role="status" aria-live="polite" aria-label="Result">0</div>
+  <div class="keys" id="keys">
+    <button class="fn" data-k="clear" id="clear" aria-label="All clear">AC</button>
+    <button class="fn" data-k="sign" aria-label="Plus minus">&plusmn;</button>
+    <button class="fn" data-k="percent" aria-label="Percent">%</button>
+    <button class="op" data-k="/" aria-label="Divide">&divide;</button>
+
+    <button class="num" data-k="7">7</button>
+    <button class="num" data-k="8">8</button>
+    <button class="num" data-k="9">9</button>
+    <button class="op" data-k="*" aria-label="Multiply">&times;</button>
+
+    <button class="num" data-k="4">4</button>
+    <button class="num" data-k="5">5</button>
+    <button class="num" data-k="6">6</button>
+    <button class="op" data-k="-" aria-label="Subtract">&minus;</button>
+
+    <button class="num" data-k="1">1</button>
+    <button class="num" data-k="2">2</button>
+    <button class="num" data-k="3">3</button>
+    <button class="op" data-k="+" aria-label="Add">+</button>
+
+    <button class="num zero" data-k="0">0</button>
+    <button class="num" data-k="." aria-label="Decimal point">.</button>
+    <button class="op" data-k="=" aria-label="Equals">=</button>
+  </div>
+</main>
+
+<script>
+"use strict";
+
+// ---------- Calculator logic (same rules as the iPhone calculator) ----------
+const MAX_DIGITS = 9;
+
+// Round away floating-point noise, so 0.1 + 0.2 = 0.3.
+const clean = (n) => parseFloat(n.toPrecision(12));
+
+function apply(op, a, b) {
+  switch (op) {
+    case "+": return clean(a + b);
+    case "-": return clean(a - b);
+    case "*": return clean(a * b);
+    case "/": return b === 0 ? null : clean(a / b);
+  }
+}
+const isMul = (op) => op === "*" || op === "/";
+
+function format(n) {
+  if (!isFinite(n)) return "Error";
+  if (n === 0) return "0";
+  const abs = Math.abs(n);
+  if (abs >= 1e9 || abs < 1e-8) {
+    // Scientific notation, e.g. 1.23457e12
+    let [m, e] = n.toExponential(5).split("e");
+    m = m.replace(/\.?0+$/, "");
+    return m + "e" + e.replace("+", "");
+  }
+  let s = n.toPrecision(MAX_DIGITS);
+  if (s.includes("e")) s = String(parseFloat(s));
+  if (s.includes(".")) s = s.replace(/\.?0+$/, "");
+  return s;
+}
+
+function makeEngine() {
+  let display = "0", typing = false, value = 0, error = false;
+  let selected = null, addP = null, mulP = null, last = null;
+
+  const current = () => (typing ? parseFloat(display) : value);
+  const digits = (s) => s.replace(/[^0-9]/g, "").length;
+
+  function show(n) {
+    value = n; display = format(n); typing = false; selected = null;
+    if (display === "Error") error = true;
+  }
+  function reset() {
+    display = "0"; typing = false; value = 0; error = false;
+    selected = null; addP = null; mulP = null; last = null;
+  }
+  function fail() { reset(); display = "Error"; error = true; }
+
+  return {
+    get display() { return display; },
+    get selected() { return selected; },
+    get clearLabel() { return typing ? "C" : "AC"; },
+
+    digit(d) {
+      if (error) reset();
+      if (!typing) { display = d; typing = true; }
+      else if (display === "0") display = d;
+      else if (display === "-0") display = "-" + d;
+      else if (digits(display) < MAX_DIGITS) display += d;
+      selected = null;
+    },
+    decimal() {
+      if (error) reset();
+      if (!typing) { display = "0."; typing = true; }
+      else if (!display.includes(".") && digits(display) < MAX_DIGITS) display += ".";
+      selected = null;
+    },
+    backspace() {
+      if (!typing || error) return;
+      display = display.slice(0, -1);
+      if (display === "" || display === "-") display = "0";
+    },
+    sign() {
+      if (error) return;
+      if (!typing && (selected || value === 0)) {
+        display = "-0"; typing = true; selected = null; return;
+      }
+      display = display.startsWith("-") ? display.slice(1) : "-" + display;
+      if (!typing) value = -value;
+    },
+    percent() {
+      if (error) return;
+      let r = clean(current() / 100);
+      if (!mulP && addP) r = clean(addP.lhs * current() / 100); // 50 + 10% = 55
+      show(r);
+    },
+    clear() {
+      if (typing) { display = "0"; typing = false; value = 0; }
+      else reset();
+    },
+    operation(op) {
+      if (error) return;
+      let x = current();
+      // Pressing a different operator right after another replaces it.
+      if (!typing && selected) {
+        if (mulP) { x = mulP.lhs; mulP = null; }
+        else if (addP) { x = addP.lhs; addP = null; }
+      }
+      if (isMul(op)) {
+        if (mulP) { const r = apply(mulP.op, mulP.lhs, x); if (r === null) return fail(); x = r; }
+        mulP = { lhs: x, op };
+      } else {
+        if (mulP) { const r = apply(mulP.op, mulP.lhs, x); if (r === null) return fail(); x = r; mulP = null; }
+        if (addP) x = apply(addP.op, addP.lhs, x);
+        addP = { lhs: x, op };
+      }
+      show(x);
+      selected = op;
+    },
+    equals() {
+      if (error) return;
+      const rhs = current();
+      if (!mulP && !addP) {
+        // Repeat the last operation: 2 + 3 = = = gives 5, 8, 11.
+        if (!last) return show(rhs);
+        const r = apply(last.op, rhs, last.rhs);
+        return r === null ? fail() : show(r);
+      }
+      let res = rhs;
+      if (mulP) {
+        last = { op: mulP.op, rhs };
+        res = apply(mulP.op, mulP.lhs, res);
+        if (res === null) return fail();
+      } else {
+        last = { op: addP.op, rhs };
+      }
+      if (addP) res = apply(addP.op, addP.lhs, res);
+      mulP = null; addP = null;
+      show(res);
+    },
+  };
+}
+
+// Adds thousands separators: 1234567.8 -> 1,234,567.8
+function group(s) {
+  if (s === "Error" || s.includes("e")) return s;
+  const neg = s.startsWith("-");
+  const [int, frac] = (neg ? s.slice(1) : s).split(".");
+  const g = int.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  return (neg ? "-" : "") + g + (frac !== undefined ? "." + frac : "");
+}
+
+// ---------- Screen ----------
+const engine = makeEngine();
+const displayEl = document.getElementById("display");
+const clearEl = document.getElementById("clear");
+const opButtons = [...document.querySelectorAll("button.op")];
+
+function render() {
+  displayEl.textContent = group(engine.display);
+  // Shrink the text until it fits on one line.
+  let size = 88;
+  displayEl.style.fontSize = size + "px";
+  while (displayEl.scrollWidth > displayEl.clientWidth && size > 30) {
+    size -= 2;
+    displayEl.style.fontSize = size + "px";
+  }
+  clearEl.textContent = engine.clearLabel;
+  clearEl.setAttribute("aria-label", engine.clearLabel === "C" ? "Clear" : "All clear");
+  opButtons.forEach((b) => b.classList.toggle("selected", b.dataset.k === engine.selected));
+}
+
+function press(k) {
+  if (/^[0-9]$/.test(k)) engine.digit(k);
+  else if (k === ".") engine.decimal();
+  else if (k === "=") engine.equals();
+  else if (k === "clear") engine.clear();
+  else if (k === "sign") engine.sign();
+  else if (k === "percent") engine.percent();
+  else if (k === "back") engine.backspace();
+  else if ("+-*/".includes(k)) engine.operation(k);
+  render();
+}
+
+// pointerdown makes taps feel instant on iPhone.
+document.getElementById("keys").addEventListener("pointerdown", (e) => {
+  const b = e.target.closest("button");
+  if (!b) return;
+  e.preventDefault();
+  b.classList.add("pressed");
+  setTimeout(() => b.classList.remove("pressed"), 120);
+  press(b.dataset.k);
+});
+
+// Swipe left or right on the number to delete the last digit.
+let swipeX = null;
+displayEl.addEventListener("touchstart", (e) => { swipeX = e.touches[0].clientX; }, { passive: true });
+displayEl.addEventListener("touchend", (e) => {
+  if (swipeX !== null && Math.abs(e.changedTouches[0].clientX - swipeX) > 30) press("back");
+  swipeX = null;
+});
+
+// Keyboard support (handy on iPad or desktop).
+document.addEventListener("keydown", (e) => {
+  const map = { Enter: "=", "=": "=", Escape: "clear", Backspace: "back", "%": "percent", x: "*", X: "*" };
+  const k = map[e.key] || e.key;
+  if (/^[0-9.+\-*/]$/.test(k) || ["=", "clear", "back", "percent"].includes(k)) {
+    e.preventDefault();
+    press(k);
+  }
+});
+
+// Block pinch-zoom on iOS.
+document.addEventListener("gesturestart", (e) => e.preventDefault());
+
+window.addEventListener("resize", render);
+render();
+
+// Offline support.
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
+}
+</script>
+</body>
+</html>

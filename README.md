@@ -13,7 +13,18 @@ An iPhone-style calculator app for iOS, written in SwiftUI.
 - Large numbers get thousands separators and switch to scientific notation when they don't fit
 - Haptic feedback, VoiceOver labels, and a custom app icon
 
-## Run it on your iPhone
+## Use it on your iPhone without a Mac (web app)
+
+The `docs/` folder has a web version with the same features. It works offline and
+installs to your Home Screen like a normal app.
+
+1. On GitHub, open this repo → **Settings** → **Pages**.
+2. Under **Build and deployment**, set **Source** to *Deploy from a branch*, pick the branch
+   with this code and the **/docs** folder, then **Save**.
+3. After a minute or two, open `https://oluwatimilehin23.github.io/calculator/` in **Safari** on your iPhone.
+4. Tap **Share** → **Add to Home Screen** → **Add**.
+
+## Run the native app on your iPhone (needs a Mac)
 
 You need a Mac with **Xcode 16 or later** (free from the Mac App Store).
 
@@ -36,3 +47,4 @@ Requires iOS 17 or later.
 | `Calculator/ContentView.swift` | The screen: display and keypad |
 | `Calculator/CalculatorApp.swift` | App entry point |
 | `Calculator/Assets.xcassets` | App icon |
+| `docs/` | Web app version (HTML, offline support, icons) |

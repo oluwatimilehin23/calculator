@@ -1,0 +1,1442 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Maison Vela</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="A demo fashion storefront with 60 real product photos and three carousel mechanics: an orbit wheel, a curved spotlight rail and a shuffle grid.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400..700;1,6..96,400..700&family=JetBrains+Mono:wght@400;500&family=Manrope:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: a boutique in three rooms. Each department is one full-width browsing machine,
+   stacked down the page, with a product line beneath it. The shoe room is a dark band. */
+:root {
+  --paper: #ECEEF1;
+  --surface: #F8F9FB;
+  --ink: #14161B;
+  --muted: #5B6270;
+  --line: #CED3DA;
+  --accent: #2639C9;
+  --accent-ink: #FFFFFF;
+  --night: #111319;
+  --night-surface: #191C24;
+  --night-fg: #ECEEF3;
+  --night-muted: #9198A6;
+  --night-line: #2D323C;
+  --night-accent: #A3AEFF;
+  --glow: rgba(150, 166, 255, 0.34);
+  --scrim: rgba(10, 12, 16, 0.45);
+  --shadow: 0 1px 2px rgba(20, 22, 27, 0.08), 0 16px 32px -16px rgba(20, 22, 27, 0.35);
+
+  --font-display: "Bodoni Moda", "Bodoni 72", Didot, "Times New Roman", Georgia, serif;
+  --font-body: "Manrope", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  --t-xs: 0.75rem;
+  --t-sm: 0.875rem;
+  --t-base: 1rem;
+  --t-md: 1.25rem;
+  --t-lg: 1.75rem;
+  --t-xl: clamp(2.4rem, 5vw, 3.6rem);
+  --t-hero: clamp(2.7rem, 7.4vw, 5.6rem);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #0D0F13;
+    --surface: #161920;
+    --ink: #ECEEF2;
+    --muted: #9AA1AD;
+    --line: #2A2F38;
+    --accent: #8E9BFF;
+    --accent-ink: #0D0F13;
+    --night: #07080B;
+    --night-surface: #12151B;
+    --night-fg: #ECEEF3;
+    --night-muted: #9198A6;
+    --night-line: #262A33;
+    --night-accent: #A3AEFF;
+    --glow: rgba(150, 166, 255, 0.30);
+    --scrim: rgba(0, 0, 0, 0.6);
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.5), 0 16px 34px -16px rgba(0, 0, 0, 0.8);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #0D0F13;
+  --surface: #161920;
+  --ink: #ECEEF2;
+  --muted: #9AA1AD;
+  --line: #2A2F38;
+  --accent: #8E9BFF;
+  --accent-ink: #0D0F13;
+  --night: #07080B;
+  --night-surface: #12151B;
+  --night-fg: #ECEEF3;
+  --night-muted: #9198A6;
+  --night-line: #262A33;
+  --night-accent: #A3AEFF;
+  --glow: rgba(150, 166, 255, 0.30);
+  --scrim: rgba(0, 0, 0, 0.6);
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.5), 0 16px 34px -16px rgba(0, 0, 0, 0.8);
+  color-scheme: dark;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: var(--t-base);
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+img { max-width: 100%; display: block; }
+[hidden] { display: none !important; }
+button { font: inherit; color: inherit; }
+a { color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.sr-only {
+  position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+
+.wrap {
+  max-width: 1180px;
+  margin-inline: auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+
+/* ---------- Header ---------- */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0 0 auto;
+  height: env(safe-area-inset-top, 0px);
+  z-index: 25;
+  background: var(--paper);
+}
+.topbar {
+  position: sticky;
+  top: env(safe-area-inset-top, 0px);
+  z-index: 20;
+  background: var(--paper);
+  border-bottom: 1px solid var(--line);
+}
+.topbar-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  min-height: 60px;
+}
+.wordmark {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.05rem;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.dept-nav { display: flex; gap: 28px; font-size: var(--t-sm); }
+.dept-nav a { color: var(--muted); text-decoration: none; }
+.dept-nav a:hover { color: var(--ink); }
+.basket-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 8px 8px 16px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: transparent;
+  font-size: var(--t-sm);
+  font-weight: 600;
+  cursor: pointer;
+}
+.basket-btn:hover { border-color: var(--ink); }
+.basket-count {
+  min-width: 26px;
+  height: 26px;
+  padding: 0 7px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--paper);
+  font-family: var(--font-mono);
+  font-size: var(--t-xs);
+}
+.basket-count.bump { animation: bump 0.4s ease; }
+@keyframes bump { 40% { transform: scale(1.3); } }
+@media (max-width: 560px) { .dept-nav { display: none; } }
+
+/* ---------- Hero ---------- */
+.hero { padding-block: clamp(40px, 7vw, 88px) clamp(32px, 5vw, 56px); }
+.eyebrow {
+  margin: 0 0 12px;
+  font-family: var(--font-mono);
+  font-size: var(--t-xs);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.hero-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: var(--t-hero);
+  line-height: 0.98;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+.hero-title em { font-style: italic; color: var(--accent); }
+.hero-foot {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+  gap: 32px 64px;
+  align-items: end;
+  margin-top: clamp(28px, 4vw, 48px);
+}
+.hero-copy { margin: 0; max-width: 44ch; color: var(--muted); font-size: 1.05rem; }
+.hero-index { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line); }
+.hero-index a {
+  display: grid;
+  grid-template-columns: 6.5em minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 16px;
+  padding: 14px 2px;
+  border-bottom: 1px solid var(--line);
+  text-decoration: none;
+}
+.hero-index a:hover .hi-name { color: var(--accent); }
+.hi-count { font-size: var(--t-xs); color: var(--muted); }
+.hi-name { font-family: var(--font-display); font-size: var(--t-md); font-weight: 500; }
+.hi-how { font-size: var(--t-sm); color: var(--muted); }
+@media (max-width: 760px) {
+  .hero-foot { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 420px) {
+  .hero-index a { grid-template-columns: minmax(0, 1fr) auto; }
+  .hi-count { display: none; }
+}
+
+/* ---------- Department sections ---------- */
+.dept { padding-block: clamp(48px, 7vw, 88px); scroll-margin-top: 60px; }
+.dept + .dept { border-top: 1px solid var(--line); }
+.dept-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px 24px;
+  margin-bottom: 24px;
+}
+.dept-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: var(--t-xl);
+  line-height: 1;
+  letter-spacing: -0.01em;
+}
+.dept-title small {
+  margin-left: 12px;
+  font-family: var(--font-mono);
+  font-size: var(--t-xs);
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  vertical-align: middle;
+}
+.dept-hint { margin: 0; max-width: 38ch; font-size: var(--t-sm); color: var(--muted); }
+
+.dept--night {
+  --paper: var(--night);
+  --surface: var(--night-surface);
+  --ink: var(--night-fg);
+  --muted: var(--night-muted);
+  --line: var(--night-line);
+  --accent: var(--night-accent);
+  --accent-ink: var(--night);
+  background: var(--paper);
+  color: var(--ink);
+  border-top: 0;
+  color-scheme: dark;
+}
+.dept + .dept--night, .dept--night + .dept { border-top: 0; }
+
+/* ---------- Shared product line ---------- */
+.product-panel {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  grid-template-areas: "prev body buy next";
+  align-items: center;
+  gap: 16px 24px;
+  margin-top: 20px;
+}
+.product-panel--plain { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "body buy"; }
+.panel-body { grid-area: body; min-width: 0; }
+.panel-kicker { margin: 0; font-size: var(--t-xs); color: var(--muted); letter-spacing: 0.04em; }
+.panel-name {
+  margin: 2px 0 2px;
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: var(--t-lg);
+  line-height: 1.15;
+}
+.panel-meta { margin: 0; font-size: var(--t-sm); color: var(--muted); }
+.panel-buy { grid-area: buy; display: flex; align-items: center; gap: 16px; }
+.price { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-size: 1.1rem; font-weight: 500; }
+.add-btn {
+  padding: 12px 20px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--paper);
+  font-size: var(--t-sm);
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 0.2s, color 0.2s;
+}
+.add-btn:hover { background: var(--accent); color: var(--accent-ink); }
+.nav-btn {
+  width: 46px;
+  height: 46px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+.nav-btn:hover { border-color: var(--ink); }
+.nav-btn svg { width: 18px; height: 18px; }
+.nav-prev { grid-area: prev; }
+.nav-next { grid-area: next; }
+@media (max-width: 640px) {
+  .product-panel {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas: "body body body" "prev buy next";
+  }
+  .product-panel .panel-buy { justify-content: center; }
+  .product-panel--plain { grid-template-columns: minmax(0, 1fr); grid-template-areas: "body" "buy"; }
+  .product-panel--plain .panel-buy { justify-content: space-between; }
+}
+
+/* ---------- 1. Orbit wheel ---------- */
+.orbit-stage {
+  --orbit-w: clamp(112px, 15vw, 176px);
+  position: relative;
+  height: 440px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background:
+    radial-gradient(120% 90% at 50% 0%, var(--surface) 0%, transparent 70%),
+    var(--paper);
+  touch-action: pan-y;
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: grab;
+}
+.orbit-stage.is-dragging { cursor: grabbing; }
+.orbit-dial {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  background: repeating-conic-gradient(from -0.6deg, var(--muted) 0deg 0.6deg, transparent 0.6deg 6deg);
+  -webkit-mask: radial-gradient(closest-side, transparent calc(100% - 12px), #000 calc(100% - 12px), #000 calc(100% - 2px), transparent 100%);
+          mask: radial-gradient(closest-side, transparent calc(100% - 12px), #000 calc(100% - 12px), #000 calc(100% - 2px), transparent 100%);
+  opacity: 0.45;
+  will-change: transform;
+}
+.orbit-dot {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  margin: -3px 0 0 -3px;
+  border-radius: 50%;
+  background: var(--accent);
+  pointer-events: none;
+  z-index: 80;
+}
+.orbit-card {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: var(--orbit-w);
+  aspect-ratio: 4 / 5;
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--line);
+  box-shadow: var(--shadow);
+  transform-origin: 50% 50%;
+  will-change: transform;
+}
+.orbit-card img { width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
+.orbit-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 2px var(--accent);
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.orbit-card.is-active::after { opacity: 1; }
+
+/* ---------- 2. Curved rail ---------- */
+.rail-stage {
+  --rail-w: clamp(104px, 12.5vw, 158px);
+  position: relative;
+  height: clamp(280px, 40vw, 470px);
+  overflow: hidden;
+  border-radius: 20px;
+  background: radial-gradient(90% 70% at 50% 100%, var(--surface) 0%, transparent 70%), var(--paper);
+  border: 1px solid var(--line);
+  touch-action: pan-y;
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: grab;
+}
+.rail-stage.is-dragging { cursor: grabbing; }
+.rail-svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
+.rail-line { fill: none; stroke: var(--muted); stroke-width: 1.25; opacity: 0.7; }
+.rail-ticks { fill: none; stroke: var(--muted); stroke-width: 9; stroke-dasharray: 1 27; opacity: 0.45; }
+.rail-glow {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: calc(var(--rail-w) * 3.4);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, var(--glow), transparent);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s;
+}
+.rail-stage.has-spot .rail-glow { opacity: 1; }
+.rail-item {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: var(--rail-w);
+  aspect-ratio: 1;
+  transform-origin: 50% 100%;
+  will-change: transform;
+}
+.rail-item.is-spot { z-index: 5; }
+.rail-tile {
+  width: 100%;
+  height: 100%;
+  border-radius: 14px;
+  overflow: hidden;
+  background: var(--line);
+  transform-origin: 50% 100%;
+  box-shadow: 0 18px 30px -18px rgba(0, 0, 0, 0.85);
+  transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.3s, filter 0.3s, box-shadow 0.3s;
+}
+.rail-tile img { width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
+.rail-item.is-spot .rail-tile {
+  transform: translateY(-6px) scale(1.34);
+  box-shadow: 0 0 0 1px var(--night-line), 0 30px 60px -22px rgba(0, 0, 0, 0.95);
+}
+.rail-stage.has-spot .rail-item:not(.is-spot) .rail-tile { opacity: 0.26; filter: saturate(0.25) brightness(0.8); }
+.rail-controls {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 16px;
+}
+.rail-range { flex: 1; min-width: 0; accent-color: var(--accent); }
+.rail-window { font-size: var(--t-xs); color: var(--muted); white-space: nowrap; min-width: 9.5em; text-align: right; }
+@media (max-width: 480px) { .rail-window { display: none; } }
+
+/* ---------- 3. Shuffle grid ---------- */
+.shuffle-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 24px;
+}
+.pill {
+  padding: 10px 16px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: transparent;
+  font-size: var(--t-sm);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s, color 0.2s, border-color 0.2s;
+}
+.pill:hover { border-color: var(--ink); }
+.pill[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--paper); }
+.pill--primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.pill--primary:hover { border-color: var(--accent); filter: brightness(1.08); }
+.pill svg { width: 16px; height: 16px; vertical-align: -3px; margin-right: 6px; }
+.shuffle-status { margin: 0 0 0 auto; font-size: var(--t-xs); color: var(--muted); }
+@media (max-width: 560px) { .shuffle-status { margin-left: 0; width: 100%; } }
+.bag-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 28px 14px;
+}
+@media (min-width: 640px) { .bag-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 32px 18px; } }
+@media (min-width: 1000px) { .bag-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
+.bag-card { min-width: 0; display: flex; flex-direction: column; }
+.bag-photo {
+  position: relative;
+  aspect-ratio: 4 / 5;
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--line);
+}
+.bag-photo img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.6s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.bag-card:hover .bag-photo img { transform: scale(1.04); }
+.bag-sku {
+  position: absolute;
+  left: 8px;
+  top: 8px;
+  padding: 3px 7px;
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 0.68rem;
+  letter-spacing: 0.04em;
+}
+.bag-info { flex: 1; display: flex; flex-direction: column; gap: 3px; padding-top: 12px; }
+.bag-info > .bag-row:last-child { margin-top: auto; padding-top: 4px; }
+.bag-row { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.bag-name { margin: 0; min-width: 0; font-size: 0.95rem; font-weight: 600; line-height: 1.3; }
+.bag-meta { margin: 0; font-size: 0.8rem; color: var(--muted); }
+.bag-dims { font-size: 0.72rem; color: var(--muted); }
+.mini-add {
+  flex: none;
+  padding: 5px 11px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: transparent;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color 0.2s, color 0.2s, border-color 0.2s;
+}
+.mini-add:hover { background: var(--ink); border-color: var(--ink); color: var(--paper); }
+.bag-row .price { font-size: 0.95rem; }
+
+/* ---------- Footer ---------- */
+.footer { border-top: 1px solid var(--line); }
+.footer .wrap {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 16px 40px;
+  padding-block: 40px 48px;
+  font-size: var(--t-sm);
+  color: var(--muted);
+}
+.footer p { margin: 0; max-width: 62ch; }
+.footer .wordmark { color: var(--ink); }
+
+/* ---------- Basket drawer ---------- */
+.scrim { position: fixed; inset: 0; z-index: 40; background: var(--scrim); }
+.basket {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 50;
+  width: min(400px, 100vw);
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border-left: 1px solid var(--line);
+  box-shadow: var(--shadow);
+  padding-top: calc(20px + env(safe-area-inset-top, 0px));
+  padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+  padding-left: 20px;
+  padding-right: max(20px, env(safe-area-inset-right, 0px));
+}
+.basket-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.basket-head h2 { margin: 0; font-family: var(--font-display); font-weight: 500; font-size: var(--t-lg); }
+.basket-list { list-style: none; margin: 16px 0 0; padding: 0; overflow-y: auto; flex: 1; min-height: 0; }
+.basket-line {
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+}
+.basket-line img { width: 56px; height: 68px; object-fit: cover; border-radius: 8px; }
+.line-name { margin: 0; font-weight: 600; font-size: var(--t-sm); line-height: 1.3; }
+.line-meta { margin: 2px 0 6px; font-size: 0.7rem; color: var(--muted); }
+.qty { display: inline-flex; align-items: center; gap: 8px; }
+.qty button {
+  width: 26px;
+  height: 26px;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+  line-height: 1;
+}
+.qty span { font-family: var(--font-mono); font-size: var(--t-xs); min-width: 1.5ch; text-align: center; }
+.basket-empty { margin: 24px 0; color: var(--muted); font-size: var(--t-sm); }
+.basket-foot { padding-top: 16px; display: grid; gap: 12px; }
+.subtotal { display: flex; justify-content: space-between; font-weight: 600; }
+.checkout { width: 100%; opacity: 0.45; cursor: not-allowed; }
+.checkout:hover { background: var(--ink); color: var(--paper); }
+.basket-note { margin: 0; font-size: var(--t-xs); color: var(--muted); text-align: center; }
+
+/* ---------- Toast ---------- */
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+  z-index: 60;
+  max-width: calc(100vw - 32px);
+  padding: 12px 18px;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--paper);
+  font-size: var(--t-sm);
+  font-weight: 600;
+  box-shadow: var(--shadow);
+  opacity: 0;
+  transform: translate(-50%, 16px);
+  pointer-events: none;
+  transition: opacity 0.25s, transform 0.25s;
+}
+.toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
+}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="wrap topbar-inner">
+    <a class="wordmark" href="#top">Maison Vela</a>
+    <nav class="dept-nav" aria-label="Departments">
+      <a href="#clothing">Clothing</a>
+      <a href="#shoes">Shoes</a>
+      <a href="#bags">Bags</a>
+    </nav>
+    <button class="basket-btn" id="basket-btn" type="button" aria-expanded="false" aria-controls="basket">
+      Basket <span class="basket-count" id="basket-count">0</span>
+    </button>
+  </div>
+</header>
+
+<main id="top">
+  <section class="hero wrap" aria-labelledby="hero-title">
+    <p class="eyebrow">Autumn / Winter 2026 edit</p>
+    <h1 class="hero-title" id="hero-title">Sixty pieces, <em>browsed three ways.</em></h1>
+    <div class="hero-foot">
+      <p class="hero-copy">Spin the clothing wheel, glide along the shoe rail, or shuffle the wall of bags. Every product shot is a real photograph.</p>
+      <ul class="hero-index">
+        <li><a href="#clothing"><span class="hi-count mono">20 pieces</span><span class="hi-name">Clothing</span><span class="hi-how">Orbit wheel</span></a></li>
+        <li><a href="#shoes"><span class="hi-count mono">20 pairs</span><span class="hi-name">Shoes</span><span class="hi-how">Curved rail</span></a></li>
+        <li><a href="#bags"><span class="hi-count mono">20 bags</span><span class="hi-name">Bags</span><span class="hi-how">Shuffle wall</span></a></li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- 1. Clothing: drag-to-orbit wheel -->
+  <section class="dept" id="clothing" aria-labelledby="clothing-title">
+    <div class="wrap">
+      <div class="dept-head">
+        <div>
+          <p class="eyebrow">Orbit wheel</p>
+          <h2 class="dept-title" id="clothing-title">Clothing <small>20 pieces</small></h2>
+        </div>
+        <p class="dept-hint">Drag the wheel to spin it, tap a piece to bring it to the top, or focus the wheel and use the arrow keys.</p>
+      </div>
+      <div class="orbit-stage" id="orbit-stage" tabindex="0" role="group" aria-roledescription="carousel" aria-label="Clothing wheel. Use the left and right arrow keys to turn it.">
+        <div class="orbit-dial" id="orbit-dial" aria-hidden="true"></div>
+        <div class="orbit-dot" id="orbit-dot" aria-hidden="true"></div>
+      </div>
+      <div class="product-panel">
+        <button class="nav-btn nav-prev" id="orbit-prev" type="button" aria-label="Previous piece">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
+        </button>
+        <div class="panel-body">
+          <p class="panel-kicker mono"><span id="orbit-pos">01</span> / 20 · <span id="orbit-sku">MV-C01</span></p>
+          <h3 class="panel-name" id="orbit-name">Fringe Knit Poncho</h3>
+          <p class="panel-meta"><span id="orbit-meta">Ecru · Open-knit cotton</span> · <span class="mono" id="orbit-detail">One size</span></p>
+        </div>
+        <div class="panel-buy">
+          <span class="price" id="orbit-price">$88</span>
+          <button class="add-btn" id="orbit-add" type="button">Add to basket</button>
+        </div>
+        <button class="nav-btn nav-next" id="orbit-next" type="button" aria-label="Next piece">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>
+        </button>
+      </div>
+      <p class="sr-only" id="orbit-live" aria-live="polite"></p>
+    </div>
+  </section>
+
+  <!-- 2. Shoes: curved SVG rail with hover spotlight -->
+  <section class="dept dept--night" id="shoes" aria-labelledby="shoes-title">
+    <div class="wrap">
+      <div class="dept-head">
+        <div>
+          <p class="eyebrow">Curved rail</p>
+          <h2 class="dept-title" id="shoes-title">Shoes <small>20 pairs</small></h2>
+        </div>
+        <p class="dept-hint">Hover a pair to spotlight it. Drag the rail or use the slider to travel along it. On a phone, tap a pair.</p>
+      </div>
+      <div class="rail-stage" id="rail-stage" tabindex="0" role="group" aria-roledescription="carousel" aria-label="Shoe rail. Use the left and right arrow keys to spotlight each pair.">
+        <svg class="rail-svg" id="rail-svg" aria-hidden="true"><path class="rail-line" id="rail-line" d="M0 0"/><path class="rail-ticks" id="rail-ticks" d="M0 0"/></svg>
+        <div class="rail-glow" id="rail-glow" aria-hidden="true"></div>
+      </div>
+      <div class="rail-controls">
+        <button class="nav-btn" id="rail-prev" type="button" aria-label="Move the rail left">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
+        </button>
+        <input class="rail-range" id="rail-range" type="range" min="0" max="100" step="1" value="0" aria-label="Position along the shoe rail">
+        <button class="nav-btn" id="rail-next" type="button" aria-label="Move the rail right">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>
+        </button>
+        <span class="rail-window mono" id="rail-window">Pairs 01–06 of 20</span>
+      </div>
+      <div class="product-panel product-panel--plain">
+        <div class="panel-body">
+          <p class="panel-kicker mono"><span id="rail-label">Centre of the rail</span> · <span id="rail-sku">MV-S01</span></p>
+          <h3 class="panel-name" id="rail-name">Knit Speed Runner</h3>
+          <p class="panel-meta"><span id="rail-meta">Black · Engineered knit</span> · <span class="mono" id="rail-detail">EU 39–46</span></p>
+        </div>
+        <div class="panel-buy">
+          <span class="price" id="rail-price">$140</span>
+          <button class="add-btn" id="rail-add" type="button">Add to basket</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3. Bags: shuffle grid -->
+  <section class="dept" id="bags" aria-labelledby="bags-title">
+    <div class="wrap">
+      <div class="dept-head">
+        <div>
+          <p class="eyebrow">Shuffle wall</p>
+          <h2 class="dept-title" id="bags-title">Bags <small>20 bags</small></h2>
+        </div>
+        <p class="dept-hint">Shuffle the wall for a fresh arrangement, or sort it by price or name.</p>
+      </div>
+      <div class="shuffle-bar" role="toolbar" aria-label="Arrange bags">
+        <button class="pill pill--primary" id="shuffle-btn" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 3h5v5"/><path d="M4 20L21 3"/><path d="M21 16v5h-5"/><path d="M15 15l6 6"/><path d="M4 4l5 5"/></svg>Shuffle
+        </button>
+        <button class="pill" type="button" data-sort="price-asc" aria-pressed="false">Price, low to high</button>
+        <button class="pill" type="button" data-sort="price-desc" aria-pressed="false">Price, high to low</button>
+        <button class="pill" type="button" data-sort="name" aria-pressed="false">A to Z</button>
+        <p class="shuffle-status mono" id="shuffle-status" aria-live="polite">Original order</p>
+      </div>
+      <ul class="bag-grid" id="bag-grid"></ul>
+    </div>
+  </section>
+</main>
+
+<footer class="footer">
+  <div class="wrap">
+    <span class="wordmark">Maison Vela</span>
+    <p>A demo storefront built to show three carousel mechanics with plain HTML, CSS and JavaScript: no canvas, no WebGL, no animation library. Product photos are real photographs from <a href="https://unsplash.com" rel="noopener" target="_blank">Unsplash</a>, free to use under the <a href="https://unsplash.com/license" rel="noopener" target="_blank">Unsplash License</a>. Names, prices and sizes are illustrative.</p>
+  </div>
+</footer>
+
+<div class="scrim" id="scrim" hidden></div>
+<aside class="basket" id="basket" hidden aria-label="Basket">
+  <div class="basket-head">
+    <h2>Basket</h2>
+    <button class="nav-btn" id="basket-close" type="button" aria-label="Close basket">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+    </button>
+  </div>
+  <ul class="basket-list" id="basket-list"></ul>
+  <p class="basket-empty" id="basket-empty">Your basket is empty. Add something from the wheel, the rail or the wall.</p>
+  <div class="basket-foot">
+    <div class="subtotal"><span>Subtotal</span><span class="mono" id="basket-subtotal">$0</span></div>
+    <button class="add-btn checkout" type="button" disabled>Checkout</button>
+    <p class="basket-note">This is a demo store, so checkout is turned off.</p>
+  </div>
+</aside>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(() => {
+  "use strict";
+  const $ = (s) => document.querySelector(s);
+  const TAU = Math.PI * 2;
+  const pad = (n) => String(n).padStart(2, "0");
+  const mod = (a, n) => ((a % n) + n) % n;
+  const money = (n) => "$" + n.toLocaleString("en-US");
+  const reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
+
+  // ---------- Catalogue: [name, colour, material, sizes or dimensions, price] ----------
+  const RAW = {
+    clothes: [
+      ["Fringe Knit Poncho", "Ecru", "Open-knit cotton", "One size", 88],
+      ["Moto Leather Jacket", "Black", "Lambskin leather", "XS–XL", 420],
+      ["Washed Denim Jacket", "Light indigo", "12 oz cotton denim", "S–XL", 128],
+      ["Satin Bomber", "Rust", "Nylon satin, rib trims", "S–XL", 145],
+      ["Field Parka", "Olive", "Waxed cotton twill", "S–XXL", 210],
+      ["Belted Wrap Coat", "Camel", "Wool blend", "XS–L", 295],
+      ["Pullover Hoodie", "Heather grey", "380 gsm loopback fleece", "S–XXL", 78],
+      ["Crewneck Sweater", "Tangerine", "Merino blend", "XS–L", 92],
+      ["Everyday Sweatshirt", "White", "Brushed cotton fleece", "XS–XL", 68],
+      ["Original Graphic Tee", "Natural", "220 gsm cotton jersey", "S–XL", 42],
+      ["Slub Cotton Tee", "Sky marl", "160 gsm slub cotton", "XS–XL", 34],
+      ["Wordmark Tee", "Black", "200 gsm organic cotton", "S–XL", 38],
+      ["Check Flannel Shirt", "Black and white", "Brushed cotton flannel", "S–XL", 86],
+      ["Dotted Chambray Shirt", "Mid blue", "Cotton chambray", "XS–L", 74],
+      ["Piqué Polo", "Jade, coral or slate", "Cotton piqué", "S–XL", 58],
+      ["Straight Raw Jeans", "Indigo", "13.5 oz selvedge denim", "W28–W36", 135],
+      ["Ripped Denim Shorts", "Bleach wash", "Rigid cotton denim", "XS–L", 56],
+      ["Cuffed Joggers", "Blush", "Fluid crepe", "XS–L", 82],
+      ["Flowing Maxi Dress", "Scarlet", "Georgette", "XS–L", 185],
+      ["Corduroy Shirt Dress", "Burgundy", "Needlecord", "XS–XL", 118],
+    ],
+    shoes: [
+      ["Knit Speed Runner", "Black", "Engineered knit", "EU 39–46", 140],
+      ["Air Cushion Runner", "Violet", "Mesh, visible air unit", "EU 38–46", 160],
+      ["Sock-Fit Trainer", "Lagoon and coral", "Knit upper, foam sole", "EU 37–45", 130],
+      ["Canvas Skate Low", "Oxblood", "Cotton canvas, vulcanised sole", "EU 36–46", 65],
+      ["Double Monk Strap", "Chestnut", "Calf leather, welted sole", "EU 40–46", 240],
+      ["Pointed Pump", "Nude", "Patent leather, 90 mm heel", "EU 35–41", 150],
+      ["Flyknit Runner", "Crimson", "Knit, foam midsole", "EU 38–46", 120],
+      ["Botanical Stiletto", "Floral print", "Satin, 100 mm heel", "EU 35–41", 165],
+      ["Utility Low", "Black", "Leather, cupsole", "EU 38–46", 115],
+      ["Retro Runner", "Rose and grey", "Suede and mesh", "EU 36–43", 110],
+      ["Suede Brogue", "Sage", "Suede, leather sole", "EU 39–45", 210],
+      ["Court High-Top", "Fire red", "Tumbled leather", "EU 39–46", 225],
+      ["Glitter Pump", "Rose gold", "Glitter, 100 mm heel", "EU 35–41", 195],
+      ["Featherweight Runner", "Moss", "Knit, foam midsole", "EU 38–46", 120],
+      ["Classic Stiletto", "Noir", "Leather, 105 mm heel", "EU 35–41", 175],
+      ["Cushioned Runner", "White and sunset", "Mesh, air unit", "EU 37–45", 150],
+      ["Two-Strap Sandal", "Taupe", "Suede, cork footbed", "EU 35–46", 110],
+      ["Canvas High-Top", "Cherry", "Cotton canvas", "EU 36–46", 70],
+      ["Lace-Up Boot", "Espresso", "Waxed leather", "EU 39–46", 260],
+      ["Brogue Boot", "Tan", "Calf leather, rubber sole", "EU 39–46", 290],
+    ],
+    bags: [
+      ["Quilted Camera Bag", "Black", "Quilted leather, chain strap", "24 × 13 × 6 cm", 680],
+      ["Studded Flap Bag", "Dove grey", "Calf leather, pyramid studs", "27 × 18 × 8 cm", 540],
+      ["Python-Print Clutch", "Natural", "Embossed leather, ring clasp", "20 × 11 × 6 cm", 320],
+      ["Chevron Crossbody", "Mauve", "Saffiano leather", "22 × 15 × 7 cm", 210],
+      ["Chevron Crossbody", "Blush", "Saffiano leather", "22 × 15 × 7 cm", 210],
+      ["Croc Phone Pouch", "Burgundy", "Croc-embossed leather", "13 × 19 × 4 cm", 160],
+      ["Top-Handle Bag", "Vermilion", "Box leather", "28 × 22 × 12 cm", 390],
+      ["Quilted Envelope Bag", "Red", "Chevron-quilted leather", "26 × 17 × 6 cm", 590],
+      ["Wicker Handbag", "Apricot", "Rattan, leather flap", "25 × 20 × 12 cm", 180],
+      ["Leather Satchel", "Teal", "Pebbled leather", "30 × 23 × 13 cm", 340],
+      ["Croc Shoulder Bag", "Cognac", "Croc-embossed leather", "23 × 17 × 9 cm", 295],
+      ["Woven Chain Tote", "Tan", "Woven nappa, chain trim", "40 × 30 × 12 cm", 420],
+      ["Saddle Bag", "Cognac", "Smooth leather", "24 × 17 × 7 cm", 230],
+      ["Mini Satchel", "Slate", "Grained leather, buckles", "25 × 19 × 8 cm", 195],
+      ["Turn-Lock Bag", "Ivory", "Calf leather", "27 × 19 × 10 cm", 360],
+      ["Laptop Messenger", "Tan and brown", "Vintage leather", "38 × 28 × 6 cm", 280],
+      ["Structured Tote", "Black", "Coated canvas, leather handles", "35 × 27 × 13 cm", 310],
+      ["Leather Backpack", "Brick", "Waxed leather", "30 × 40 × 14 cm", 260],
+      ["City Backpack", "Grey", "Recycled nylon", "29 × 42 × 13 cm", 150],
+      ["Flap Shoulder Bag", "Sand", "Smooth leather, push lock", "28 × 21 × 9 cm", 245],
+    ],
+  };
+  const PREFIX = { clothes: "C", shoes: "S", bags: "B" };
+  const P = {};
+  const BY_ID = {};
+  for (const cat of Object.keys(RAW)) {
+    P[cat] = RAW[cat].map((r, i) => {
+      const p = {
+        id: "MV-" + PREFIX[cat] + pad(i + 1),
+        cat,
+        img: "images/" + cat + "/" + pad(i + 1) + ".webp",
+        name: r[0], color: r[1], material: r[2], detail: r[3], price: r[4],
+      };
+      BY_ID[p.id] = p;
+      return p;
+    });
+  }
+  const altText = (p) => p.name + " in " + p.color.toLowerCase();
+
+  function fillPanel(prefix, p) {
+    $("#" + prefix + "-sku").textContent = p.id;
+    $("#" + prefix + "-name").textContent = p.name;
+    $("#" + prefix + "-meta").textContent = p.color + " · " + p.material;
+    $("#" + prefix + "-detail").textContent = p.detail;
+    $("#" + prefix + "-price").textContent = money(p.price);
+  }
+
+  // ---------- Basket ----------
+  const STORE_KEY = "maison-vela-basket";
+  const basket = new Map();
+  try {
+    const saved = JSON.parse(localStorage.getItem(STORE_KEY) || "[]");
+    if (Array.isArray(saved)) {
+      for (const [id, q] of saved) if (BY_ID[id] && q > 0) basket.set(id, Math.min(99, q | 0));
+    }
+  } catch (e) { /* storage unavailable: start empty */ }
+
+  const basketBtn = $("#basket-btn"), basketEl = $("#basket"), scrim = $("#scrim");
+  const countEl = $("#basket-count"), listEl = $("#basket-list");
+  const toastEl = $("#toast");
+  let toastTimer = 0;
+
+  function saveBasket() {
+    try { localStorage.setItem(STORE_KEY, JSON.stringify([...basket])); } catch (e) { /* ignore */ }
+  }
+  function renderBasket() {
+    let count = 0, total = 0;
+    listEl.textContent = "";
+    for (const [id, q] of basket) {
+      const p = BY_ID[id];
+      count += q; total += q * p.price;
+      const li = document.createElement("li");
+      li.className = "basket-line";
+      li.innerHTML =
+        '<img src="' + p.img + '" alt="">' +
+        '<div><p class="line-name"></p><p class="line-meta mono"></p>' +
+        '<div class="qty"><button type="button" data-act="dec">−</button><span></span><button type="button" data-act="inc">+</button></div></div>' +
+        '<span class="price"></span>';
+      li.querySelector(".line-name").textContent = p.name;
+      li.querySelector(".line-meta").textContent = p.id + " · " + p.color;
+      li.querySelector(".qty span").textContent = q;
+      li.querySelector(".price").textContent = money(q * p.price);
+      const [dec, inc] = li.querySelectorAll(".qty button");
+      dec.dataset.id = inc.dataset.id = id;
+      dec.setAttribute("aria-label", "Remove one " + p.name);
+      inc.setAttribute("aria-label", "Add one more " + p.name);
+      listEl.appendChild(li);
+    }
+    countEl.textContent = count;
+    $("#basket-empty").hidden = count > 0;
+    $("#basket-subtotal").textContent = money(total);
+    basketBtn.setAttribute("aria-label", "Basket, " + count + (count === 1 ? " item" : " items"));
+  }
+  function toast(msg) {
+    toastEl.textContent = msg;
+    toastEl.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toastEl.classList.remove("show"), 2200);
+  }
+  function addToBasket(p) {
+    basket.set(p.id, Math.min(99, (basket.get(p.id) || 0) + 1));
+    saveBasket();
+    renderBasket();
+    countEl.classList.remove("bump");
+    void countEl.offsetWidth;
+    countEl.classList.add("bump");
+    toast("Added " + p.name + " to your basket");
+  }
+  listEl.addEventListener("click", (e) => {
+    const b = e.target.closest("button[data-act]");
+    if (!b) return;
+    const id = b.dataset.id, q = basket.get(id) || 0;
+    const next = b.dataset.act === "inc" ? Math.min(99, q + 1) : q - 1;
+    if (next > 0) basket.set(id, next); else basket.delete(id);
+    saveBasket();
+    renderBasket();
+    if (next <= 0) basketEl.querySelector("#basket-close").focus();
+  });
+  function openBasket() {
+    basketEl.hidden = false; scrim.hidden = false;
+    basketBtn.setAttribute("aria-expanded", "true");
+    $("#basket-close").focus();
+  }
+  function closeBasket() {
+    basketEl.hidden = true; scrim.hidden = true;
+    basketBtn.setAttribute("aria-expanded", "false");
+    basketBtn.focus();
+  }
+  basketBtn.addEventListener("click", () => (basketEl.hidden ? openBasket() : closeBasket()));
+  $("#basket-close").addEventListener("click", closeBasket);
+  scrim.addEventListener("click", closeBasket);
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !basketEl.hidden) closeBasket(); });
+  renderBasket();
+
+  // ---------- 1. Orbit wheel ----------
+  // Each piece sits at an angle on a circle. Its angle becomes sin/cos, which is written
+  // straight into one CSS matrix() per card, every frame of the drag.
+  function initOrbit() {
+    const stage = $("#orbit-stage"), dial = $("#orbit-dial"), dot = $("#orbit-dot");
+    const items = P.clothes, n = items.length, step = TAU / n;
+    const cards = items.map((p, i) => {
+      const el = document.createElement("div");
+      el.className = "orbit-card";
+      el.dataset.i = i;
+      el.innerHTML = '<img src="' + p.img + '" alt="" draggable="false" decoding="async">';
+      el.querySelector("img").alt = altText(p);
+      stage.appendChild(el);
+      return el;
+    });
+
+    let rot = 0, vel = 0, target = null, active = -1, raf = 0;
+    let dragging = false, moved = false, pid = null, startX = 0, lastX = 0, lastT = 0, downIdx = -1;
+    let W = 0, R = 0, cx = 0, cy = 0, cw = 0, ch = 0;
+
+    function measure() {
+      W = stage.clientWidth;
+      cw = cards[0].offsetWidth;
+      ch = cards[0].offsetHeight;
+      R = Math.max(360, W * 0.62, (cw * 1.16) / step);
+      const y0 = 20 + (ch * 1.16) / 2;
+      const vis = Math.asin(Math.min(1, (W / 2 + cw * 0.3) / R));
+      const H = Math.round(Math.min(520, Math.max(280, y0 + R * (1 - Math.cos(vis)) + ch * 0.55)));
+      stage.style.height = H + "px";
+      cx = W / 2;
+      cy = y0 + R;
+      const dr = R - ch * 0.8;
+      dial.style.width = dial.style.height = dr * 2 + "px";
+      dial.style.left = cx - dr + "px";
+      dial.style.top = cy - dr + "px";
+      dot.style.left = cx + "px";
+      dot.style.top = y0 + ch * 0.58 + 14 + "px";
+    }
+
+    function render() {
+      for (let i = 0; i < n; i++) {
+        let th = i * step - rot;
+        th -= TAU * Math.floor((th + Math.PI) / TAU); // wrap to [-π, π)
+        const el = cards[i];
+        const c = Math.cos(th), s = Math.sin(th);
+        const x = cx + R * s;
+        if (c < 0 || x < -cw || x > W + cw) {
+          el.style.visibility = "hidden";
+          continue;
+        }
+        const near = Math.exp(-((th / step) ** 2) * 1.3); // 1 at the top of the wheel
+        const k = 0.78 + 0.38 * near;
+        const y = cy - R * c;
+        el.style.visibility = "";
+        el.style.transform =
+          "matrix(" + (k * c).toFixed(4) + "," + (k * s).toFixed(4) + "," + (-k * s).toFixed(4) + "," +
+          (k * c).toFixed(4) + "," + (x - cw / 2).toFixed(1) + "," + (y - ch / 2).toFixed(1) + ")";
+        el.style.zIndex = String(10 + Math.round(near * 50));
+        el.style.opacity = (0.5 + 0.5 * near).toFixed(3);
+      }
+      dial.style.transform = "rotate(" + -rot + "rad)";
+      const a = mod(Math.round(rot / step), n);
+      if (a !== active) {
+        if (active >= 0) cards[active].classList.remove("is-active");
+        active = a;
+        cards[active].classList.add("is-active");
+        $("#orbit-pos").textContent = pad(active + 1);
+        fillPanel("orbit", items[active]);
+      }
+    }
+
+    function settle() {
+      const p = items[active];
+      $("#orbit-live").textContent = p.name + ", " + money(p.price) + ". " + (active + 1) + " of " + n + ".";
+    }
+
+    function loop() {
+      raf = 0;
+      if (!dragging) {
+        if (Math.abs(vel) > 0.0006) {
+          rot += vel;
+          vel *= 0.94;
+        } else {
+          vel = 0;
+          if (target === null) target = Math.round(rot / step) * step;
+          const d = target - rot;
+          if (Math.abs(d) < 0.0004) {
+            rot = target;
+            target = null;
+            render();
+            settle();
+            return;
+          }
+          rot += d * 0.14;
+        }
+      }
+      render();
+      if (!dragging) raf = requestAnimationFrame(loop);
+    }
+    const kick = () => { if (!raf) raf = requestAnimationFrame(loop); };
+
+    function moveTo(t) {
+      target = t;
+      vel = 0;
+      if (reduced.matches) {
+        rot = t; target = null; render(); settle();
+        return;
+      }
+      kick();
+    }
+    function goTo(i) {
+      const cur = Math.round(rot / step);
+      let d = mod(i - cur, n);
+      if (d > n / 2) d -= n;
+      moveTo((cur + d) * step);
+    }
+    function stepBy(dir) {
+      const base = target !== null ? Math.round(target / step) : Math.round(rot / step);
+      moveTo((base + dir) * step);
+    }
+
+    stage.addEventListener("pointerdown", (e) => {
+      if (e.button !== 0) return;
+      dragging = true; moved = false; pid = e.pointerId;
+      startX = lastX = e.clientX; lastT = e.timeStamp;
+      vel = 0; target = null;
+      const card = e.target.closest(".orbit-card");
+      downIdx = card ? +card.dataset.i : -1;
+      stage.setPointerCapture(pid);
+      stage.classList.add("is-dragging");
+    });
+    stage.addEventListener("pointermove", (e) => {
+      if (!dragging || e.pointerId !== pid) return;
+      const dx = e.clientX - lastX;
+      if (!moved && Math.abs(e.clientX - startX) > 5) moved = true;
+      rot -= dx / R;
+      const dt = Math.max(1, e.timeStamp - lastT);
+      vel = 0.7 * vel + 0.3 * (-(dx / R) * (16.7 / dt));
+      lastX = e.clientX; lastT = e.timeStamp;
+      kick();
+    });
+    function endDrag(e) {
+      if (!dragging || e.pointerId !== pid) return;
+      dragging = false;
+      stage.classList.remove("is-dragging");
+      if (!moved && downIdx >= 0 && e.type === "pointerup") { goTo(downIdx); return; }
+      if (e.timeStamp - lastT > 90 || reduced.matches) vel = 0;
+      vel = Math.max(-0.12, Math.min(0.12, vel));
+      target = null;
+      kick();
+    }
+    stage.addEventListener("pointerup", endDrag);
+    stage.addEventListener("pointercancel", endDrag);
+    stage.addEventListener("keydown", (e) => {
+      if (e.key === "ArrowRight") stepBy(1);
+      else if (e.key === "ArrowLeft") stepBy(-1);
+      else if (e.key === "Home") goTo(0);
+      else if (e.key === "End") goTo(n - 1);
+      else if (e.key === "Enter") addToBasket(items[active]);
+      else return;
+      e.preventDefault();
+    });
+    $("#orbit-prev").addEventListener("click", () => stepBy(-1));
+    $("#orbit-next").addEventListener("click", () => stepBy(1));
+    $("#orbit-add").addEventListener("click", () => addToBasket(items[active]));
+
+    measure();
+    render();
+    return () => { measure(); render(); };
+  }
+
+  // ---------- 2. Curved rail ----------
+  // Pairs ride an SVG curve. Positions come from getPointAtLength(); the spotlight is a
+  // class swap that scales one tile and dims the rest. No canvas anywhere.
+  function initRail() {
+    const stage = $("#rail-stage"), svg = $("#rail-svg"), line = $("#rail-line"), ticks = $("#rail-ticks");
+    const glow = $("#rail-glow"), range = $("#rail-range"), windowEl = $("#rail-window");
+    const items = P.shoes, n = items.length;
+    const els = items.map((p, i) => {
+      const el = document.createElement("div");
+      el.className = "rail-item";
+      el.dataset.i = i;
+      el.innerHTML = '<div class="rail-tile"><img src="' + p.img + '" alt="" draggable="false" decoding="async"></div>';
+      el.querySelector("img").alt = altText(p);
+      stage.appendChild(el);
+      return el;
+    });
+    const pts = new Array(n).fill(null);
+
+    let W = 0, H = 0, L = 0, tw = 0, spacing = 0, minOff = 0, maxOff = 0, kPx = 1;
+    let off = null, target = 0, vel = 0, raf = 0, spot = -1, centre = -1, shown = -1;
+    let dragging = false, moved = false, pid = null, startX = 0, lastX = 0, lastT = 0, downIdx = -1;
+    const clampOff = (v) => Math.max(minOff, Math.min(maxOff, v));
+
+    function measure() {
+      W = stage.clientWidth;
+      H = stage.clientHeight;
+      tw = els[0].offsetWidth;
+      const yMid = H - 36;
+      const depth = Math.min(H * 0.42, W * 0.3);
+      const y0 = yMid - depth;
+      const y1 = (yMid - 0.25 * y0) / 0.75; // control points so the curve bottoms out at yMid
+      const d = "M " + -0.04 * W + " " + y0 + " C " + 0.3 * W + " " + y1 + " " + 0.7 * W + " " + y1 + " " + 1.04 * W + " " + y0;
+      svg.setAttribute("viewBox", "0 0 " + W + " " + H);
+      line.setAttribute("d", d);
+      ticks.setAttribute("d", d);
+      L = line.getTotalLength();
+      kPx = L / (W * 1.08);
+      spacing = tw * 1.16;
+      minOff = -L * 0.14;
+      maxOff = (n - 1) * spacing - L * 0.86;
+      if (maxOff < minOff) minOff = maxOff = ((n - 1) * spacing - L) / 2;
+      off = off === null ? minOff : clampOff(off);
+      target = clampOff(target);
+      range.max = String(Math.max(1, Math.round(maxOff - minOff)));
+      range.disabled = maxOff === minOff;
+    }
+
+    function placeGlow() {
+      if (spot < 0 || !pts[spot]) return;
+      const gw = glow.offsetWidth, pt = pts[spot];
+      glow.style.transform = "translate(" + (pt.x - gw / 2) + "px," + (pt.y - tw * 0.72 - gw / 2) + "px)";
+    }
+
+    function render() {
+      let best = Infinity, first = -1, last = -1;
+      centre = 0;
+      for (let i = 0; i < n; i++) {
+        const s = i * spacing - off;
+        const dist = Math.abs(s - L / 2);
+        if (dist < best) { best = dist; centre = i; }
+        const el = els[i];
+        if (s < 0 || s > L) {
+          el.style.visibility = "hidden";
+          pts[i] = null;
+          continue;
+        }
+        const pt = line.getPointAtLength(s);
+        const a = line.getPointAtLength(Math.max(0, s - 2));
+        const b = line.getPointAtLength(Math.min(L, s + 2));
+        const ang = Math.atan2(b.y - a.y, b.x - a.x) * 0.55;
+        pts[i] = pt;
+        el.style.visibility = "";
+        el.style.transform = "translate(" + (pt.x - tw / 2).toFixed(1) + "px," + (pt.y - tw).toFixed(1) + "px) rotate(" + ang.toFixed(4) + "rad)";
+        if (pt.x > tw * 0.3 && pt.x < W - tw * 0.3) {
+          if (first < 0) first = i;
+          last = i;
+        }
+      }
+      range.value = String(Math.round(off - minOff));
+      if (first >= 0) windowEl.textContent = "Pairs " + pad(first + 1) + "–" + pad(last + 1) + " of " + n;
+      placeGlow();
+      updatePanel();
+    }
+
+    function updatePanel() {
+      const i = spot >= 0 ? spot : centre;
+      const label = spot >= 0 ? "In the spotlight" : "Centre of the rail";
+      if (i === shown && $("#rail-label").textContent === label) return;
+      shown = i;
+      $("#rail-label").textContent = label;
+      fillPanel("rail", items[i]);
+    }
+
+    function setSpot(i) {
+      if (spot === i) return;
+      if (spot >= 0) els[spot].classList.remove("is-spot");
+      spot = i;
+      if (spot >= 0) els[spot].classList.add("is-spot");
+      stage.classList.toggle("has-spot", spot >= 0);
+      placeGlow();
+      updatePanel();
+    }
+
+    function loop() {
+      raf = 0;
+      if (!dragging) {
+        if (Math.abs(vel) > 0.25) {
+          const next = clampOff(off + vel);
+          if (next === off) vel = 0;
+          off = next;
+          vel *= 0.93;
+          target = off;
+        } else {
+          vel = 0;
+          const d = target - off;
+          if (Math.abs(d) < 0.3) { off = target; render(); return; }
+          off += d * 0.16;
+        }
+      }
+      render();
+      if (!dragging) raf = requestAnimationFrame(loop);
+    }
+    const kick = () => { if (!raf) raf = requestAnimationFrame(loop); };
+    function moveTo(v) {
+      target = clampOff(v);
+      vel = 0;
+      if (reduced.matches) { off = target; render(); return; }
+      kick();
+    }
+    const centreOn = (i) => moveTo(i * spacing - L / 2);
+
+    els.forEach((el, i) => {
+      el.addEventListener("pointerenter", (e) => {
+        if (e.pointerType !== "touch" && !dragging) setSpot(i);
+      });
+    });
+    stage.addEventListener("pointerleave", (e) => {
+      if (e.pointerType !== "touch" && !dragging) setSpot(-1);
+    });
+    stage.addEventListener("pointerdown", (e) => {
+      if (e.button !== 0) return;
+      dragging = true; moved = false; pid = e.pointerId;
+      startX = lastX = e.clientX; lastT = e.timeStamp; vel = 0;
+      const item = e.target.closest(".rail-item");
+      downIdx = item ? +item.dataset.i : -1;
+      stage.setPointerCapture(pid);
+      stage.classList.add("is-dragging");
+    });
+    stage.addEventListener("pointermove", (e) => {
+      if (!dragging || e.pointerId !== pid) return;
+      const dx = e.clientX - lastX;
+      if (!moved && Math.abs(e.clientX - startX) > 5) moved = true;
+      off = clampOff(off - dx * kPx);
+      target = off;
+      const dt = Math.max(1, e.timeStamp - lastT);
+      vel = 0.7 * vel + 0.3 * (-dx * kPx * (16.7 / dt));
+      lastX = e.clientX; lastT = e.timeStamp;
+      kick();
+    });
+    function endDrag(e) {
+      if (!dragging || e.pointerId !== pid) return;
+      dragging = false;
+      stage.classList.remove("is-dragging");
+      if (!moved && e.type === "pointerup") {
+        if (downIdx >= 0) {
+          if (e.pointerType === "touch") setSpot(spot === downIdx ? -1 : downIdx);
+          else setSpot(downIdx);
+          centreOn(downIdx);
+        } else if (e.pointerType === "touch") {
+          setSpot(-1);
+        }
+        return;
+      }
+      if (e.timeStamp - lastT > 90 || reduced.matches) vel = 0;
+      vel = Math.max(-60, Math.min(60, vel));
+      kick();
+    }
+    stage.addEventListener("pointerup", endDrag);
+    stage.addEventListener("pointercancel", endDrag);
+    stage.addEventListener("wheel", (e) => {
+      if (Math.abs(e.deltaX) <= Math.abs(e.deltaY)) return; // leave vertical scrolling to the page
+      e.preventDefault();
+      moveTo(target + e.deltaX);
+    }, { passive: false });
+    stage.addEventListener("keydown", (e) => {
+      const from = spot >= 0 ? spot : centre;
+      if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
+        const i = Math.max(0, Math.min(n - 1, from + (e.key === "ArrowRight" ? 1 : -1)));
+        setSpot(i);
+        centreOn(i);
+      } else if (e.key === "Escape") setSpot(-1);
+      else if (e.key === "Enter") addToBasket(items[from]);
+      else return;
+      e.preventDefault();
+    });
+    stage.addEventListener("blur", () => setSpot(-1));
+    range.addEventListener("input", () => moveTo(minOff + Number(range.value)));
+    $("#rail-prev").addEventListener("click", () => moveTo(target - spacing * 3));
+    $("#rail-next").addEventListener("click", () => moveTo(target + spacing * 3));
+    $("#rail-add").addEventListener("click", () => addToBasket(items[spot >= 0 ? spot : centre]));
+
+    measure();
+    render();
+    return () => { measure(); render(); };
+  }
+
+  // ---------- 3. Shuffle grid ----------
+  // A button reorders the array, then the cards are re-appended in the new order.
+  // A short FLIP glide (Web Animations API) shows where each bag went.
+  function initShuffle() {
+    const grid = $("#bag-grid"), status = $("#shuffle-status");
+    const items = P.bags;
+    let order = items.map((_, i) => i);
+    let shuffles = 0;
+    const cards = items.map((p) => {
+      const li = document.createElement("li");
+      li.className = "bag-card";
+      li.innerHTML =
+        '<div class="bag-photo"><img loading="lazy" decoding="async" src="' + p.img + '" alt=""><span class="bag-sku mono"></span></div>' +
+        '<div class="bag-info">' +
+        '<div class="bag-row"><h3 class="bag-name"></h3><span class="price"></span></div>' +
+        '<p class="bag-meta"></p>' +
+        '<div class="bag-row"><span class="bag-dims mono"></span><button class="mini-add" type="button">Add</button></div>' +
+        "</div>";
+      li.querySelector("img").alt = altText(p);
+      li.querySelector(".bag-sku").textContent = p.id;
+      li.querySelector(".bag-name").textContent = p.name;
+      li.querySelector(".price").textContent = money(p.price);
+      li.querySelector(".bag-meta").textContent = p.color + " · " + p.material;
+      li.querySelector(".bag-dims").textContent = p.detail;
+      const btn = li.querySelector(".mini-add");
+      btn.setAttribute("aria-label", "Add " + p.name + " in " + p.color.toLowerCase() + " to basket");
+      btn.addEventListener("click", () => addToBasket(p));
+      return li;
+    });
+    cards.forEach((c) => grid.appendChild(c));
+
+    function shuffle(arr) {
+      const a = arr.slice();
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
+    }
+
+    function apply(next, message) {
+      const before = new Map(cards.map((c) => [c, c.getBoundingClientRect()]));
+      order = next;
+      order.forEach((i) => grid.appendChild(cards[i]));
+      status.textContent = message;
+      if (reduced.matches || !cards[0].animate) return;
+      cards.forEach((c) => {
+        const a = before.get(c), b = c.getBoundingClientRect();
+        const dx = a.left - b.left, dy = a.top - b.top;
+        if (!dx && !dy) return;
+        c.animate(
+          [{ transform: "translate(" + dx + "px," + dy + "px)" }, { transform: "translate(0, 0)" }],
+          { duration: 460, easing: "cubic-bezier(0.2, 0.8, 0.2, 1)" }
+        );
+      });
+    }
+
+    const sortButtons = [...document.querySelectorAll("[data-sort]")];
+    const press = (btn) => sortButtons.forEach((b) => b.setAttribute("aria-pressed", String(b === btn)));
+
+    $("#shuffle-btn").addEventListener("click", () => {
+      let next;
+      do { next = shuffle(order); } while (next.every((v, i) => v === order[i]));
+      shuffles += 1;
+      press(null);
+      apply(next, "Shuffled · round " + shuffles);
+    });
+    sortButtons.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const kind = btn.dataset.sort;
+        const next = items.map((_, i) => i);
+        if (kind === "price-asc") next.sort((a, b) => items[a].price - items[b].price || a - b);
+        if (kind === "price-desc") next.sort((a, b) => items[b].price - items[a].price || a - b);
+        if (kind === "name") next.sort((a, b) => items[a].name.localeCompare(items[b].name) || a - b);
+        press(btn);
+        apply(next, "Sorted: " + btn.textContent.toLowerCase());
+      });
+    });
+  }
+
+  const refreshOrbit = initOrbit();
+  const refreshRail = initRail();
+  initShuffle();
+
+  let resizeRaf = 0;
+  window.addEventListener("resize", () => {
+    cancelAnimationFrame(resizeRaf);
+    resizeRaf = requestAnimationFrame(() => { refreshOrbit(); refreshRail(); });
+  });
+})();
+</script>
+</body>
+</html>

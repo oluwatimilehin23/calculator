@@ -1,0 +1,1658 @@
+# Recreate this site as a single HTML file: Coca-Cola (fan concept)
+
+You are an expert creative front-end developer. Produce a **single self-contained `index.html`**
+that reproduces the project below **exactly**: same layout, visuals, motion, and interaction.
+Pure HTML/CSS/JS in one file: no build step, no framework, no bundler. Use CDN `<script>` tags for
+the libraries actually used (GSAP, Google `<model-viewer>` web component). Hardcode every value
+given here as a fixed constant. The CSS lives in one `<style>` block in `<head>`; the script in one
+`<script>` block before `</body>`.
+
+## What it is
+
+A full-viewport (no-scroll) hero landing page: a **Coca-Cola fan concept** showing three products,
+the **Coca-Cola Classic can** (red), the **Coca-Cola Zero Sugar can** (black) and the **glass
+contour bottle**. A dark radial gradient fills the screen: deep red for Classic, black with an
+ember-red glow for Zero Sugar, warm cola-amber for the bottle. A large 3D product floats in the
+centre, rendered with Google's `<model-viewer>`, and **tilts toward the cursor in real time**.
+Around it, 3D cherry/leaf models float and drift with parallax and are **repelled by the pointer**
+like a force field. Translucent PNG bubbles rise endlessly from the bottom. A glass header sits on
+top with a `Coca-Cola` script wordmark. A left column has a giant cursive headline ("Ice Cold"), a
+CTA and a badge. A right column has a three-card product carousel and a second headline
+("Deliciously Bubbly").
+
+Clicking a product card (or the ← → arrows) triggers a choreographed transition. The background
+colour morphs. The product spins 720° with a motion blur and, at the peak of the spin, swaps to the
+new model (can ↔ can ↔ bottle). All berry models implode toward the centre, swap their model
+(cherries for Classic and the bottle, blueberries for Zero Sugar), then explode back out to new
+random positions. Palette: Coca-Cola red `#e41e2b`, white, black, amber; the accent is white with
+red text (`#c4111f`).
+
+At the bottom centre, a small glass pill reads **"Created by EMMANUEL OMIRIN"** with a second line
+"Fan concept · Not affiliated with The Coca-Cola Company".
+
+## The Coca-Cola can and bottle (generated in the page)
+
+No external model files are used for the products. On load, the script **builds each product as a
+real glTF (GLB) model in JavaScript** and hands it to `<model-viewer>` as a `blob:` URL:
+
+- **Lathe geometry:** each product is an `[r, y]` profile in metres (Catmull-Rom smoothed) spun
+  around Y. UV `u` wraps the circumference with `u = 0.5` facing the camera; `v` runs top → bottom.
+  Normals are computed from the surface (wrapping the seam); pole rows point straight up/down.
+- **Can** (12 fl oz proportions: radius 0.033, height 0.1225): a straight label body from
+  y 0.012 to 0.103 (material `label`, metallic 0.4, roughness 0.28) plus an aluminium bottom dome and
+  necked top with rim and lid (metallic 1, roughness 0.25).
+- **Can label texture:** a 2048-px-wide canvas drawn at the body's true aspect ratio. It has a
+  vertical edge-to-base gradient, a seamless white wave ribbon (one sine period), a `Coca-Cola`
+  wordmark in **Yellowtail** (front, plus a second copy split across the seam for the back), a
+  tagline in **Outfit 900** (`ORIGINAL TASTE` / `ZERO SUGAR`) and `12 FL OZ (355 mL)`.
+  Classic: red `#e41e2b` with white type and ribbon. Zero Sugar: black `#171717` with a red wordmark
+  and ribbon and a white tagline.
+- **Contour bottle** (height 0.1944): the fluted glass (12 vertical flutes above and below the label
+  panel) uses `KHR_materials_transmission` / `ior` / `volume`; the cola liquid inside is dark brown
+  and filled to y 0.183; a painted white `Coca-Cola` script band sits on the belly (alpha-blended
+  PNG); and a red crimped crown cap (21 crimps) tops it.
+- **Card art:** the three carousel images are drawn on 280×520 canvases from the same labels and
+  profiles. The cans get the label wrapped with `asin` cylinder mapping and metal shading; the
+  bottle gets its silhouette, cola, flutes, highlights, white script and cap.
+- The labels wait for the Yellowtail/Outfit fonts (`document.fonts.load`, 3 s timeout).
+- The centre `<model-viewer>` starts at `opacity: 0` and fades in (`0.8s`) on its first `load`.
+
+## Page shell & libraries
+
+In `<head>`:
+
+```html
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Coca-Cola</title>
+<meta name="description" content="A Coca-Cola fan concept: the classic can, Zero Sugar and the glass contour bottle in interactive 3D.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;700;900&family=Inter:wght@400;500&family=Manrope:wght@400;700&family=Galada&family=Yellowtail&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+<script type="module" src="https://unpkg.com/@google/model-viewer@4.4.0/dist/model-viewer.min.js"></script>
+```
+
+Fonts: body `'Inter'`; headings `'Galada'` (cursive); nav and credit `'Manrope'`; the Coca-Cola
+wordmark (header logo and all labels) `'Yellowtail'`; label taglines `'Outfit'`. The page does
+**not** scroll: `body { overflow: hidden; height: 100vh; }`.
+
+## Layout & sections (in order)
+
+1. `#bubbles-container`: fixed, full screen, rising `bubble.png` images.
+2. `.header`: bottle-cap SVG + `Coca-Cola` wordmark, a glass pill nav (Home · Flavors · Taste ·
+   Eco · Reviews; the active/hover item is white with red text), and a dark "Contact Us" button.
+3. `main.hero > .hero-content`, in this DOM order:
+   - `.leaves-container`: four floating leaf models (far background, `z-index: -1`).
+   - `.hero-left`: "Ice / Cold" headline, description, "Shop Now +" button, and a badge reading
+     "DESIGN CONCEPT / 3D PRODUCT SHOWCASE 2026" pushed to the bottom.
+   - `.berries-container-bg`: three small cherries behind the product.
+   - `.hero-center > #product-model`: the generated can/bottle, `80vw × 80vh`, fixed and
+     centred, rotated 25°, gently floating ±20px.
+   - `.berries-container`: six cherries in the foreground (`z-index: 110`).
+   - `.hero-right`: the carousel (Coca-Cola Classic $2.99 · Zero Sugar $2.99 · Glass Bottle $3.49,
+     plus ← → arrows) and the "Deliciously / Bubbly" headline.
+4. `footer.credit`: "Created by **EMMANUEL OMIRIN**" + the fan-concept disclaimer.
+5. The hidden `#frosted` SVG filter and a hidden block that preloads the cherry/blueberry models.
+
+## Fixed parameters (bake these in)
+
+- Classic can: `--bg-inner #c4111f`, `--bg-mid #6a0811`, `--bg-outer #160103`; cherries.
+- Zero Sugar can: `#58121a`, `#1a0608`, `#020101`; blueberries.
+- Glass bottle: `#8a3a12`, `#3b1206`, `#0c0302`; cherries.
+- Background morph: `gsap.to(body, { '--bg-*', duration: 1.5, ease: 'power2.inOut' })`.
+- Product `<model-viewer>`: `camera-orbit="0deg 90deg 380%"`, `field-of-view="30deg"`,
+  `exposure="1.5"`, `environment-image="neutral"`, `camera-controls disable-zoom shadow-intensity="0"`.
+- Cursor tilt per frame: `cameraOrbit = (mouse.x*40 + switchSpin)deg (90 + mouse.y*20)deg 380%`,
+  mouse smoothing lerp `0.05`.
+- Spin: phase 1 → `360°`, blur `15px`, `0.6s power2.in`; swap the model at the peak; phase 2 →
+  `720°`, blur `0`, `1.5s back.out(0.7)`.
+- Parallax: foreground berries `×60`, background berries `×-30`, leaves `×-15`.
+- Berry repulsion: radius `400px`, strength `-80`, lerp `0.1`, spin `0.2 × (1 + force×5)`; float
+  `15px` / `6deg` with durations `[5,7,6,8,5.5,6.5,9,11,10]`.
+- Berry implode/explode: `0.5s power2.in` to the centre at scale 0.1 / opacity 0, hold `0.3s`, then
+  explode to a random `±100px` in `0.9s back.out(1.5)`.
+- Bubbles: every `400ms`, `10–30px`, opacity `0.2–0.6`, rising `4–10s`.
+- Breakpoint: `max-width: 1200px`.
+
+## Full stylesheet
+
+```css
+:root {
+    --bg-color: #0a0a0a;
+    --text-color: #ffffff;
+    --accent-color: #ffffff;
+    --accent-ink: #c4111f;
+    --muted-color: rgba(255, 255, 255, 0.72);
+    --glass-bg: rgba(255, 255, 255, 0.06);
+    --glass-border: rgba(255, 255, 255, 0.14);
+    --font-main: 'Inter', sans-serif;
+    --font-heading: 'Galada', cursive;
+
+    /* Dynamic Background Variables (Classic Cola red) */
+    --bg-inner: #c4111f;
+    --bg-mid: #6a0811;
+    --bg-outer: #160103;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background: radial-gradient(circle at center, var(--bg-inner) 0%, var(--bg-mid) 50%, var(--bg-outer) 100%);
+    color: var(--text-color);
+    font-family: var(--font-main);
+    overflow: hidden; /* Remove scroll */
+    height: 100vh;
+    transition: background 1.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Zero Sugar: black can, ember-red glow */
+body[data-flavor="zero"] {
+    --bg-inner: #58121a;
+    --bg-mid: #1a0608;
+    --bg-outer: #020101;
+}
+
+/* Glass bottle: warm cola amber */
+body[data-flavor="bottle"] {
+    --bg-inner: #8a3a12;
+    --bg-mid: #3b1206;
+    --bg-outer: #0c0302;
+}
+
+/* ---------- Bubbles ---------- */
+#bubbles-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 0;
+    overflow: hidden;
+}
+
+.bubble-img {
+    position: absolute;
+    pointer-events: none;
+}
+
+@keyframes floatUpImg {
+    0% {
+        transform: translateY(0) translateX(0) rotate(0deg);
+        opacity: 0;
+    }
+    10% { opacity: 0.4; }
+    90% { opacity: 0.4; }
+    100% {
+        transform: translateY(-110vh) translateX(30px) rotate(360deg);
+        opacity: 0;
+    }
+}
+
+/* ---------- Header ---------- */
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 2rem 4%;
+    position: fixed;
+    top: 0;
+    width: 100%;
+    z-index: 100;
+}
+
+.logo {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 700;
+    font-size: 2.1rem;
+    font-family: 'Yellowtail', cursive;
+    font-weight: 400;
+    line-height: 1;
+}
+
+.nav {
+    display: flex;
+    gap: 0.5rem;
+    background: var(--glass-bg);
+    padding: 0.4rem;
+    border-radius: 100px;
+    border: 1px solid var(--glass-border);
+}
+
+.nav.glass {
+    position: relative;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1), inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+}
+
+.nav-item {
+    font-family: 'Manrope', sans-serif;
+    color: var(--muted-color);
+    text-decoration: none;
+    font-size: 0.85rem;
+    font-weight: 500;
+    padding: 0.5rem 1.2rem;
+    border-radius: 100px;
+    transition: all 0.3s ease;
+}
+
+.nav-item:hover,
+.nav-item.active {
+    background: var(--accent-color);
+    color: var(--accent-ink);
+}
+
+.contact-btn {
+    background: rgba(0, 0, 0, 0.5);
+    color: white;
+    border: none;
+    padding: 0.9rem 2rem;
+    border-radius: 100px;
+    font-weight: 600;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: none;
+}
+
+.contact-btn:hover {
+    background: rgba(0, 0, 0, 0.7);
+    transform: translateY(-2px);
+    box-shadow: none;
+}
+
+/* ---------- Hero ---------- */
+.hero {
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 4%;
+    padding-top: 5rem;
+}
+
+.hero-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: stretch; /* Stretch columns to full height */
+    width: 100%;
+    max-width: 100%;
+    padding: 0;
+    height: 100%;
+    position: relative;
+}
+
+/* Typography */
+.main-title,
+.side-title {
+    font-family: var(--font-heading);
+    font-size: clamp(5rem, 10vw, 12rem);
+    line-height: 0.8;
+    font-weight: 400;
+    text-transform: none;
+    white-space: nowrap;
+    color: white;
+    letter-spacing: normal;
+}
+
+.outline {
+    color: var(--text-color);
+}
+
+/* Floating leaves (far background) */
+.leaves-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: -1; /* Even further behind */
+    transition: transform 0.1s ease-out;
+}
+
+.leaf {
+    position: absolute;
+    width: 60px;
+    height: 60px;
+    pointer-events: none;
+    z-index: -1;
+    filter: drop-shadow(0 5px 15px rgba(0, 0, 0, 0.2));
+}
+
+.l1 { top: 10%; left: 15%; }
+.l2 { top: 40%; left: 80%; width: 140px; height: 140px; opacity: 0.4; }
+.l3 { top: 70%; left: 75%; width: 80px; height: 80px; }
+.l4 { top: 85%; left: 20%; width: 120px; height: 120px; opacity: 0.3; }
+
+/* Left column */
+.hero-left {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    padding: 6rem 0;
+    gap: 2rem;
+    z-index: 100;
+}
+
+@keyframes fadeInEntry {
+    to { opacity: 1; transform: none; }
+}
+
+.description {
+    color: var(--muted-color);
+    font-size: 1.1rem;
+    line-height: 1.6;
+    max-width: 400px;
+}
+
+.primary-btn {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    background: rgba(0, 0, 0, 0.5);
+    color: white;
+    border: none;
+    padding: 0.4rem 0.4rem 0.4rem 1.5rem;
+    border-radius: 100px;
+    font-weight: 700;
+    cursor: pointer;
+    width: fit-content;
+    transition: all 0.3s ease;
+    box-shadow: none;
+}
+
+.primary-btn:hover {
+    background: rgba(0, 0, 0, 0.7);
+    transform: translateY(-3px);
+    box-shadow: none;
+}
+
+.plus-icon {
+    background: var(--accent-color);
+    color: var(--accent-ink);
+    width: 38px;
+    height: 38px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    font-size: 1.4rem;
+    font-weight: 900;
+    line-height: 1;
+    padding-bottom: 2px; /* Compensate for baseline shift */
+    border: none;
+}
+
+.award-badge {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-top: auto; /* Push to bottom */
+}
+
+.award-icon {
+    width: 48px;
+    height: 48px;
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.award-text { display: flex; flex-direction: column; }
+.award-title { font-size: 0.7rem; letter-spacing: 0.1em; color: var(--muted-color); }
+.award-subtitle { font-size: 0.85rem; font-weight: 600; }
+
+/* Center product (the 3D can) */
+.hero-center {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+    opacity: 0;
+    animation: fadeIn 1.5s ease-out 0.3s forwards, float 6s ease-in-out infinite;
+    pointer-events: none;
+    background: radial-gradient(circle at center, rgba(255, 255, 255, 0.08) 0%, transparent 70%);
+}
+
+@keyframes fadeIn { to { opacity: 1; } }
+
+@keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-20px); }
+}
+
+.main-product-3d {
+    width: 80vw;
+    height: 80vh;
+    outline: none;
+    --progress-bar-color: transparent;
+    --poster-color: transparent;
+    z-index: 1;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) rotate(25deg);
+    pointer-events: none;
+    /* Fades in once the generated can has loaded */
+    opacity: 0;
+    transition: opacity 0.8s ease;
+}
+
+.main-product-3d.is-ready { opacity: 1; }
+
+.main-product-3d[camera-controls] { pointer-events: auto; }
+
+/* Berries */
+.berries-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 110; /* Above text (100) and can (50) */
+    transition: transform 0.1s ease-out;
+}
+
+.berries-container-bg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 0; /* Behind everything */
+    transition: transform 0.1s ease-out;
+}
+
+.berry {
+    position: absolute;
+    width: 120px;
+    height: 120px;
+    outline: none;
+    --progress-bar-color: transparent;
+    filter: drop-shadow(0 10px 20px rgba(0, 0, 0, 0.3));
+    transition: transform 0.8s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.berry.no-animation { animation: none !important; }
+
+.b1 { top: 25%; left: 30%; width: 220px; height: 220px; }
+.b2 { top: 60%; left: 42%; width: 100px; height: 100px; }
+.b3 { top: 30%; left: 62%; width: 250px; height: 250px; }
+.b4 { top: 15%; left: 48%; width: 140px; height: 140px; }
+.b5 { top: 75%; left: 20%; width: 120px; height: 120px; }
+.b6 { top: 45%; left: 75%; width: 180px; height: 180px; }
+.b7 { top: 15%; left: 40%; width: 80px; height: 80px; opacity: 0.7; }
+.b8 { top: 50%; left: 55%; width: 70px; height: 70px; opacity: 0.6; }
+.b9 { top: 80%; left: 35%; width: 75px; height: 75px; opacity: 0.7; }
+
+/* Right column */
+.hero-right {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: flex-end;
+    text-align: right;
+    height: 100%;
+    padding: 6rem 0;
+    z-index: 100;
+    width: 450px;
+    pointer-events: none;
+}
+
+@keyframes fadeInLeft {
+    to { opacity: 1; transform: translateX(0); }
+}
+
+.product-carousel {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    align-items: flex-end;
+    pointer-events: auto; /* Enable interaction */
+}
+
+.carousel-cards { display: flex; gap: 1rem; }
+
+.card {
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    padding: 1rem;
+    padding-top: 5rem;
+    border-radius: 28px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.5rem;
+    cursor: pointer;
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    width: 135px;
+    position: relative;
+    backdrop-filter: blur(10px);
+    text-align: center;
+}
+
+.card:hover {
+    background: rgba(255, 255, 255, 0.12);
+    border-color: rgba(255, 255, 255, 0.4);
+}
+
+.card.active {
+    border-color: var(--accent-color);
+    border-width: 1px;
+    background: var(--glass-bg);
+    box-shadow: none;
+}
+
+.card img {
+    width: 140px;
+    height: auto;
+    margin-top: -8rem;
+    filter: drop-shadow(0 20px 35px rgba(0, 0, 0, 0.5));
+    transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.4s ease !important;
+    display: block;
+    will-change: transform;
+    pointer-events: none; /* Mouse passes through image to trigger card hover */
+    opacity: 0; /* Revealed once the card art is drawn */
+}
+
+.card img.is-ready { opacity: 1; }
+
+.card:hover img {
+    transform: translateY(-30px) rotate(-12deg) scale(1.15) !important;
+}
+
+.card-info {
+    display: flex;
+    flex-direction: column;
+    font-size: 0.7rem;
+    width: 100%;
+    word-wrap: break-word;
+}
+
+.card-info span:first-child { font-weight: 600; }
+.card-info span:last-child { color: var(--muted-color); }
+
+.carousel-nav { display: flex; gap: 1rem; }
+
+.nav-arrow {
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    color: white;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.3s;
+}
+
+.nav-arrow:hover { background: rgba(255, 255, 255, 0.1); }
+
+.side-title { align-self: flex-end; text-align: right; }
+
+/* ---------- Credit ---------- */
+.credit {
+    position: fixed;
+    left: 50%;
+    bottom: 1.25rem;
+    transform: translateX(-50%);
+    z-index: 200;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.2rem;
+    padding: 0.55rem 1.4rem;
+    border-radius: 18px;
+    background: rgba(0, 0, 0, 0.35);
+    border: 1px solid var(--glass-border);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    font-family: 'Manrope', sans-serif;
+    font-size: 0.72rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    color: var(--muted-color);
+}
+
+.credit strong {
+    color: var(--text-color);
+    font-weight: 700;
+}
+
+.credit small {
+    font-size: 0.58rem;
+    letter-spacing: 0.04em;
+    text-transform: none;
+    opacity: 0.75;
+}
+
+@keyframes shine {
+    from { transform: translateX(-100%) rotate(45deg); }
+    to { transform: translateX(200%) rotate(45deg); }
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 1200px) {
+    .main-product-3d { width: 100vw; height: 60vh; top: 40%; }
+}
+
+@media (max-width: 1200px) {
+    .hero-content { grid-template-columns: 1fr; padding-top: 8rem; }
+    .hero-center { order: -1; }
+    .main-title, .side-title { font-size: 5rem; }
+    .hero-right { align-items: center; text-align: center; }
+    .side-title { align-self: center; text-align: center; }
+}
+
+@media (max-width: 600px) {
+    .credit { font-size: 0.62rem; letter-spacing: 0.12em; bottom: 0.75rem; }
+    .credit small { font-size: 0.5rem; }
+}
+```
+
+## Full body markup
+
+```html
+<div id="bubbles-container"></div>
+
+<header class="header">
+    <div class="logo">
+        <!-- Bottle cap -->
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12.00 1.00 L13.43 2.51 L15.24 1.49 L16.17 3.35 L18.20 2.91 L18.53 4.96 L20.60 5.14 L20.31 7.20 L22.24 7.98 L21.36 9.86 L22.97 11.18 L21.57 12.72 L22.72 14.45 L20.94 15.51 L21.53 17.50 L19.51 17.99 L19.48 20.06 L17.41 19.93 L16.77 21.91 L14.83 21.17 L13.64 22.88 L12.00 21.60 L10.36 22.88 L9.17 21.17 L7.23 21.91 L6.59 19.93 L4.52 20.06 L4.49 17.99 L2.47 17.50 L3.06 15.51 L1.28 14.45 L2.43 12.72 L1.03 11.18 L2.64 9.86 L1.76 7.98 L3.69 7.20 L3.40 5.14 L5.47 4.96 L5.80 2.91 L7.83 3.35 L8.76 1.49 L10.57 2.51Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" />
+            <circle cx="12" cy="12" r="5.5" stroke="currentColor" stroke-width="1.6" />
+        </svg>
+        <span>Coca-Cola</span>
+    </div>
+    <nav class="nav glass">
+        <a href="#" class="nav-item active">Home</a>
+        <a href="#" class="nav-item">Flavors</a>
+        <a href="#" class="nav-item">Taste</a>
+        <a href="#" class="nav-item">Eco</a>
+        <a href="#" class="nav-item">Reviews</a>
+    </nav>
+    <button class="contact-btn">Contact Us</button>
+</header>
+
+<main class="hero">
+    <div class="hero-content">
+        <!-- Floating leaves (far background) -->
+        <div class="leaves-container">
+            <model-viewer class="leaf l1" src="https://api.getlayers.ai/storage/v1/object/public/public/assets/soda-14ff8a788d/leaves.glb" environment-image="neutral" exposure="1.0" interaction-prompt="none" camera-orbit="45deg 75deg 105%"></model-viewer>
+            <model-viewer class="leaf l2" src="https://api.getlayers.ai/storage/v1/object/public/public/assets/soda-14ff8a788d/leaves.glb" environment-image="neutral" exposure="1.0" interaction-prompt="none" camera-orbit="-30deg 60deg 105%"></model-viewer>
+            <model-viewer class="leaf l3" src="https://api.getlayers.ai/storage/v1/object/public/public/assets/soda-14ff8a788d/leaves.glb" environment-image="neutral" exposure="1.0" interaction-prompt="none" camera-orbit="120deg 85deg 105%"></model-viewer>
+            <model-viewer class="leaf l4" src="https://api.getlayers.ai/storage/v1/object/public/public/assets/soda-14ff8a788d/leaves.glb" environment-image="neutral" exposure="1.0" interaction-prompt="none" camera-orbit="10deg 45deg 105%"></model-viewer>
+        </div>
+
+        <!-- Left column -->
+        <div class="hero-left">
+            <h1 class="main-title large-animation-1">
+                <span class="outline">Ice</span><br>
+                Cold
+            </h1>
+            <p class="description">
+                Unleash the bold taste of Coca-Cola. <br>
+                Caramel warmth &amp; crisp fizz in every sip — <br>
+                best served ice-cold.
+            </p>
+            <div class="cta-group">
+                <button class="primary-btn">
+                    Shop Now
+                    <span class="plus-icon">+</span>
+                </button>
+            </div>
+            <div class="award-badge">
+                <div class="award-icon">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 15L15 18L19 14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                        <path d="M7 10L12 15L17 10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                    </svg>
+                </div>
+                <div class="award-text">
+                    <span class="award-title">DESIGN CONCEPT</span>
+                    <span class="award-subtitle">3D PRODUCT SHOWCASE 2026</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Background berries (behind the can) -->
+        <div class="berries-container-bg">
+            <model-viewer class="berry b7" src="https://api.getlayers.ai/storage/v1/object/public/public/assets/soda-14ff8a788d/cherry.glb" environment-image="neutral" exposure="1.0" interaction-prompt="none" camera-orbit="-20deg 110deg 105%"></model-viewer>
+            <model-viewer class="berry b8" src="https://api.getlayers.ai/storage/v1/object/public/public/assets/soda-14ff8a788d/cherry.glb" environment-image="neutral" exposure="1.0" interaction-prompt="none" camera-orbit="160deg 45deg 105%"></model-viewer>
+            <model-viewer class="berry b9" src="https://api.getlayers.ai/storage/v1/object/public/public/assets/soda-14ff8a788d/cherry.glb" environment-image="neutral" exposure="1.0" interaction-prompt="none" camera-orbit="45deg 20deg 105%"></model-viewer>
+        </div>
+
+        <!-- Center product (the 3D can) -->
+        <div class="hero-center">
+            <!-- src is set from script: the can and bottle are generated at load -->
+            <model-viewer id="product-model" alt="Coca-Cola 3D can" camera-controls
+                disable-zoom shadow-intensity="0" environment-image="neutral" exposure="1.5"
+                interaction-prompt="none" camera-orbit="0deg 90deg 380%" field-of-view="30deg"
+                class="main-product-3d">
+            </model-viewer>
+        </div>
+
+        <!-- Foreground berries (above text and can) -->
+        <div class="berries-container">
+            <model-viewer class="berry b1" src="https://api.getlayers.ai/storage/v1/object/public/public/assets/soda-14ff8a788d/cherry.glb" environment-image="neutral" exposure="1.2" interaction-prompt="none" camera-orbit="45deg 120deg 105%"></model-viewer>
+            <model-viewer class="berry b2" src="https://api.getlayers.ai/storage/v1/object/public/public/assets/soda-14ff8a788d/cherry.glb" environment-image="neutral" exposure="1.2" interaction-prompt="none" camera-orbit="-120deg 45deg 105%"></model-viewer>
+            <model-viewer class="berry b3" src="https://api.getlayers.ai/storage/v1/object/public/public/assets/soda-14ff8a788d/cherry.glb" environment-image="neutral" exposure="1.2" interaction-prompt="none" camera-orbit="200deg 90deg 105%"></model-viewer>
+            <model-viewer class="berry b4" src="https://api.getlayers.ai/storage/v1/object/public/public/assets/soda-14ff8a788d/cherry.glb" environment-image="neutral" exposure="1.2" interaction-prompt="none" camera-orbit="10deg 20deg 105%"></model-viewer>
+            <model-viewer class="berry b5" src="https://api.getlayers.ai/storage/v1/object/public/public/assets/soda-14ff8a788d/cherry.glb" environment-image="neutral" exposure="1.2" interaction-prompt="none" camera-orbit="-45deg 160deg 105%"></model-viewer>
+            <model-viewer class="berry b6" src="https://api.getlayers.ai/storage/v1/object/public/public/assets/soda-14ff8a788d/cherry.glb" environment-image="neutral" exposure="1.2" interaction-prompt="none" camera-orbit="80deg 75deg 105%"></model-viewer>
+        </div>
+
+        <!-- Right column: flavor carousel + side title -->
+        <div class="hero-right">
+            <div class="product-carousel">
+                <div class="carousel-cards">
+                    <div class="card active" data-flavor="classic">
+                        <img alt="Coca-Cola Classic can">
+                        <div class="card-info">
+                            <span>Coca-Cola Classic</span>
+                            <span>$2.99</span>
+                        </div>
+                    </div>
+                    <div class="card" data-flavor="zero">
+                        <img alt="Coca-Cola Zero Sugar can">
+                        <div class="card-info">
+                            <span>Zero Sugar</span>
+                            <span>$2.99</span>
+                        </div>
+                    </div>
+                    <div class="card" data-flavor="bottle">
+                        <img alt="Coca-Cola glass contour bottle">
+                        <div class="card-info">
+                            <span>Glass Bottle</span>
+                            <span>$3.49</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="carousel-nav">
+                    <button class="nav-arrow" aria-label="Previous flavor">←</button>
+                    <button class="nav-arrow" aria-label="Next flavor">→</button>
+                </div>
+            </div>
+            <h2 class="side-title large-animation-1">
+                <span class="outline">Deliciously</span><br>
+                Bubbly
+            </h2>
+        </div>
+    </div>
+</main>
+
+<footer class="credit">
+    <span>Created by <strong>EMMANUEL OMIRIN</strong></span>
+    <small>Fan concept · Not affiliated with The Coca-Cola Company</small>
+</footer>
+
+<svg style="position: absolute; width: 0; height: 0; opacity: 0; pointer-events: none;">
+    <filter id="frosted">
+        <feTurbulence type="fractalNoise" baseFrequency="0.0125" numOctaves="3" result="noise" />
+        <feDisplacementMap in="SourceGraphic" in2="noise" scale="80" xChannelSelector="R" yChannelSelector="G" />
+    </filter>
+</svg>
+<div style="display: none;">
+    <!-- Preload berry models to avoid lag during switch -->
+    <model-viewer loading="eager" src="https://api.getlayers.ai/storage/v1/object/public/public/assets/soda-14ff8a788d/blueberry.glb"></model-viewer>
+    <model-viewer loading="eager" src="https://api.getlayers.ai/storage/v1/object/public/public/assets/soda-14ff8a788d/cherry.glb"></model-viewer>
+</div>
+```
+
+## Full script (copy verbatim)
+
+```js
+const ASSET_BASE_URL = 'https://api.getlayers.ai/storage/v1/object/public/public/assets/soda-14ff8a788d';
+const ASSETS = {
+    cherry: `${ASSET_BASE_URL}/cherry.glb`,
+    blueberry: `${ASSET_BASE_URL}/blueberry.glb`,
+    bubble: `${ASSET_BASE_URL}/bubble.png`
+};
+
+// The three products. Cans and the contour bottle are generated below
+// as real glTF models (lathe geometry + canvas-drawn labels).
+const PRODUCTS = {
+    classic: {
+        kind: 'can',
+        bg: { inner: '#c4111f', mid: '#6a0811', outer: '#160103' },
+        berry: ASSETS.cherry,
+        label: { base: '#e41e2b', edge: '#a50d18', word: '#ffffff', ribbon: '#ffffff', tagline: 'ORIGINAL TASTE', taglineColor: '#ffffff', taglineSize: 0.07 }
+    },
+    zero: {
+        kind: 'can',
+        bg: { inner: '#58121a', mid: '#1a0608', outer: '#020101' },
+        berry: ASSETS.blueberry,
+        label: { base: '#171717', edge: '#050505', word: '#e41e2b', ribbon: '#e41e2b', tagline: 'ZERO SUGAR', taglineColor: '#ffffff', taglineSize: 0.1 }
+    },
+    bottle: {
+        kind: 'bottle',
+        bg: { inner: '#8a3a12', mid: '#3b1206', outer: '#0c0302' },
+        berry: ASSETS.cherry
+    }
+};
+
+const modelViewer = document.querySelector('#product-model');
+const berriesFG = document.querySelector('.berries-container');
+const berriesBG = document.querySelector('.berries-container-bg');
+const leavesBG = document.querySelector('.leaves-container');
+const allBerries = document.querySelectorAll('.berry');
+const cards = document.querySelectorAll('.card');
+let isSwitching = false;
+let switchSpin = 0;
+let currentFlavor = 'classic';
+
+// ---------- Geometry helpers ----------
+const TAU = Math.PI * 2;
+const smoothstep = (a, b, x) => {
+    const t = Math.min(Math.max((x - a) / (b - a), 0), 1);
+    return t * t * (3 - 2 * t);
+};
+
+// Catmull-Rom resample of an [r, y] profile so lathed surfaces are smooth
+function smoothProfile(points, steps = 6) {
+    const out = [];
+    const last = points.length - 1;
+    for (let k = 0; k < last; k++) {
+        const p0 = points[Math.max(k - 1, 0)], p1 = points[k], p2 = points[k + 1], p3 = points[Math.min(k + 2, last)];
+        for (let s = 0; s < steps; s++) {
+            const t = s / steps, t2 = t * t, t3 = t2 * t;
+            const pt = [0, 1].map(c => 0.5 * ((2 * p1[c]) + (-p0[c] + p2[c]) * t +
+                (2 * p0[c] - 5 * p1[c] + 4 * p2[c] - p3[c]) * t2 + (-p0[c] + 3 * p1[c] - 3 * p2[c] + p3[c]) * t3));
+            pt[0] = Math.max(pt[0], 0);
+            out.push(pt);
+        }
+    }
+    out.push(points[last]);
+    return out;
+}
+
+// Spin an [r, y] profile around Y. u wraps the circumference with
+// u = 0.5 facing the camera; v runs top (0) to bottom (1) of the profile.
+function lathe(profile, material, { segments = 96, radial = null, scale = 1 } = {}) {
+    const rows = profile.length, cols = segments + 1;
+    const position = new Float32Array(rows * cols * 3);
+    const normal = new Float32Array(rows * cols * 3);
+    const uv = new Float32Array(rows * cols * 2);
+
+    const len = [0];
+    for (let j = 1; j < rows; j++) {
+        len[j] = len[j - 1] + Math.hypot(profile[j][0] - profile[j - 1][0], profile[j][1] - profile[j - 1][1]);
+    }
+    const total = len[rows - 1] || 1;
+
+    for (let j = 0; j < rows; j++) {
+        const [r0, y] = profile[j];
+        for (let i = 0; i < cols; i++) {
+            const t = i / segments;
+            const a = t * TAU - Math.PI / 2;
+            const r = r0 * scale * (radial ? radial(a, y) : 1);
+            const k = j * cols + i;
+            position[k * 3] = r * Math.cos(a);
+            position[k * 3 + 1] = y;
+            position[k * 3 + 2] = r * Math.sin(a);
+            uv[k * 2] = 1 - t;
+            uv[k * 2 + 1] = 1 - len[j] / total;
+        }
+    }
+
+    // Normals from the surface itself (wraps around the seam)
+    const P = (j, i) => (j * cols + i) * 3;
+    for (let j = 0; j < rows; j++) {
+        for (let i = 0; i < cols; i++) {
+            const a0 = P(j, i === 0 ? segments - 1 : i - 1), a1 = P(j, i === segments ? 1 : i + 1);
+            const p0 = P(Math.max(j - 1, 0), i), p1 = P(Math.min(j + 1, rows - 1), i);
+            const ax = position[a1] - position[a0], ay = position[a1 + 1] - position[a0 + 1], az = position[a1 + 2] - position[a0 + 2];
+            const px = position[p1] - position[p0], py = position[p1 + 1] - position[p0 + 1], pz = position[p1 + 2] - position[p0 + 2];
+            const nx = py * az - pz * ay, ny = pz * ax - px * az, nz = px * ay - py * ax;
+            const l = Math.hypot(nx, ny, nz) || 1;
+            const k = P(j, i);
+            normal[k] = nx / l; normal[k + 1] = ny / l; normal[k + 2] = nz / l;
+        }
+    }
+    // Poles (r = 0) point straight up or down, like their neighbouring row
+    for (let j = 0; j < rows; j++) {
+        if (profile[j][0] > 1e-6) continue;
+        const nb = j === 0 ? 1 : j - 1;
+        const sign = Math.sign(normal[P(nb, 0) + 1]) || 1;
+        for (let i = 0; i < cols; i++) {
+            const k = P(j, i);
+            normal[k] = 0; normal[k + 1] = sign; normal[k + 2] = 0;
+        }
+    }
+
+    const index = new (rows * cols > 65535 ? Uint32Array : Uint16Array)((rows - 1) * segments * 6);
+    let n = 0;
+    for (let j = 0; j < rows - 1; j++) {
+        for (let i = 0; i < segments; i++) {
+            const a = j * cols + i, b = a + cols;
+            index.set([a, b, a + 1, b, b + 1, a + 1], n);
+            n += 6;
+        }
+    }
+    return { position, normal, uv, index, material };
+}
+
+// Minimal binary glTF (GLB) writer
+function createGLB(primitives, materials, images = []) {
+    const parts = [], bufferViews = [], accessors = [];
+    let byteLength = 0;
+    const align = () => {
+        const pad = (4 - (byteLength % 4)) % 4;
+        if (pad) { parts.push(new Uint8Array(pad)); byteLength += pad; }
+    };
+    const addView = (bytes, target) => {
+        align();
+        const view = { buffer: 0, byteOffset: byteLength, byteLength: bytes.byteLength };
+        if (target) view.target = target;
+        parts.push(new Uint8Array(bytes.buffer, bytes.byteOffset, bytes.byteLength));
+        byteLength += bytes.byteLength;
+        bufferViews.push(view);
+        return bufferViews.length - 1;
+    };
+    const addAccessor = (array, type, size, target, bounds) => {
+        const componentType = array instanceof Float32Array ? 5126 : array instanceof Uint32Array ? 5125 : 5123;
+        const accessor = { bufferView: addView(array, target), componentType, count: array.length / size, type };
+        if (bounds) {
+            accessor.min = Array(size).fill(Infinity);
+            accessor.max = Array(size).fill(-Infinity);
+            for (let i = 0; i < array.length; i++) {
+                const c = i % size;
+                if (array[i] < accessor.min[c]) accessor.min[c] = array[i];
+                if (array[i] > accessor.max[c]) accessor.max[c] = array[i];
+            }
+        }
+        accessors.push(accessor);
+        return accessors.length - 1;
+    };
+
+    const json = {
+        asset: { version: '2.0', generator: 'Coca-Cola fan concept' },
+        scene: 0,
+        scenes: [{ nodes: [0] }],
+        nodes: [{ mesh: 0 }],
+        meshes: [{
+            primitives: primitives.map(p => ({
+                attributes: {
+                    POSITION: addAccessor(p.position, 'VEC3', 3, 34962, true),
+                    NORMAL: addAccessor(p.normal, 'VEC3', 3, 34962),
+                    TEXCOORD_0: addAccessor(p.uv, 'VEC2', 2, 34962)
+                },
+                indices: addAccessor(p.index, 'SCALAR', 1, 34963),
+                material: p.material
+            }))
+        }],
+        materials,
+        accessors,
+        bufferViews
+    };
+    if (images.length) {
+        json.images = images.map(img => ({ bufferView: addView(img.bytes), mimeType: img.mimeType }));
+        json.samplers = [{ magFilter: 9729, minFilter: 9987, wrapS: 10497, wrapT: 33071 }];
+        json.textures = images.map((_, i) => ({ source: i, sampler: 0 }));
+    }
+    const used = new Set();
+    materials.forEach(m => Object.keys(m.extensions || {}).forEach(e => used.add(e)));
+    if (used.size) json.extensionsUsed = [...used];
+    align();
+    json.buffers = [{ byteLength }];
+
+    const jsonBytes = new TextEncoder().encode(JSON.stringify(json));
+    const jsonChunk = new Uint8Array(Math.ceil(jsonBytes.length / 4) * 4).fill(0x20);
+    jsonChunk.set(jsonBytes);
+    const total = 12 + 8 + jsonChunk.length + 8 + byteLength;
+    const out = new Uint8Array(total);
+    const dv = new DataView(out.buffer);
+    dv.setUint32(0, 0x46546C67, true); // 'glTF'
+    dv.setUint32(4, 2, true);
+    dv.setUint32(8, total, true);
+    dv.setUint32(12, jsonChunk.length, true);
+    dv.setUint32(16, 0x4E4F534A, true); // 'JSON'
+    out.set(jsonChunk, 20);
+    let o = 20 + jsonChunk.length;
+    dv.setUint32(o, byteLength, true);
+    dv.setUint32(o + 4, 0x004E4942, true); // 'BIN'
+    o += 8;
+    parts.forEach(part => { out.set(part, o); o += part.byteLength; });
+    return out;
+}
+
+const canvasBytes = (canvas, mimeType) => new Promise((resolve, reject) =>
+    canvas.toBlob(blob => blob ? blob.arrayBuffer().then(b => resolve(new Uint8Array(b)), reject) : reject(new Error('toBlob failed')), mimeType, 0.92));
+
+// ---------- Can ----------
+// Real 12 fl oz proportions, in metres
+const CAN = { r: 0.033, labelBottom: 0.012, labelTop: 0.103, height: 0.1225 };
+const CAN_BOTTOM = smoothProfile([[0, 0.009], [0.012, 0.0075], [0.021, 0.0035], [0.0265, 0.0], [0.0295, 0.002], [0.0322, 0.007], [0.033, 0.012]], 5);
+const CAN_TOP = smoothProfile([[0.033, 0.103], [0.0328, 0.106], [0.0305, 0.1125], [0.0285, 0.117], [0.0278, 0.1195], [0.0281, 0.1215],
+    [0.0274, 0.1225], [0.0266, 0.1215], [0.0264, 0.118], [0.0256, 0.1172], [0.015, 0.1172], [0, 0.1176]], 4);
+
+function fitFont(g, text, weight, family, maxWidth, maxSize) {
+    g.font = `${weight} ${maxSize}px ${family}`;
+    const size = Math.min(maxSize, maxSize * maxWidth / g.measureText(text).width);
+    g.font = `${weight} ${size}px ${family}`;
+    return size;
+}
+
+// Label texture wraps the straight body; drawn at true aspect so the
+// script isn't stretched on the can.
+function drawCanLabel(scheme) {
+    const W = 2048;
+    const H = Math.round(W * (CAN.labelTop - CAN.labelBottom) / (TAU * CAN.r));
+    const c = document.createElement('canvas');
+    c.width = W; c.height = H;
+    const g = c.getContext('2d');
+
+    const bg = g.createLinearGradient(0, 0, 0, H);
+    bg.addColorStop(0, scheme.edge);
+    bg.addColorStop(0.18, scheme.base);
+    bg.addColorStop(0.82, scheme.base);
+    bg.addColorStop(1, scheme.edge);
+    g.fillStyle = bg;
+    g.fillRect(0, 0, W, H);
+
+    // Ribbon wave: one full period, so it wraps seamlessly
+    g.fillStyle = scheme.ribbon;
+    g.beginPath();
+    for (let x = 0; x <= W; x += 8) g.lineTo(x, H * (0.66 + 0.07 * Math.sin(x / W * TAU + 0.9)));
+    for (let x = W; x >= 0; x -= 8) g.lineTo(x, H * (0.735 + 0.05 * Math.sin(x / W * TAU + 1.5)));
+    g.closePath();
+    g.fill();
+
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+    // Front (x = W/2) and back (split across the seam at 0 and W)
+    const both = draw => [W / 2, 0, W].forEach(draw);
+
+    g.fillStyle = scheme.word;
+    fitFont(g, 'Coca-Cola', '400', 'Yellowtail, cursive', W * 0.34, H * 0.4);
+    both(x => g.fillText('Coca-Cola', x, H * 0.42));
+
+    g.fillStyle = scheme.taglineColor;
+    if ('letterSpacing' in g) g.letterSpacing = `${Math.round(H * 0.012)}px`;
+    fitFont(g, scheme.tagline, '900', 'Outfit, sans-serif', W * 0.22, H * scheme.taglineSize);
+    both(x => g.fillText(scheme.tagline, x, H * 0.16));
+
+    g.fillStyle = scheme.word;
+    g.font = `700 ${H * 0.04}px Outfit, sans-serif`;
+    both(x => g.fillText('12 FL OZ (355 mL)', x, H * 0.885));
+    if ('letterSpacing' in g) g.letterSpacing = '0px';
+    return c;
+}
+
+async function buildCan(label) {
+    const materials = [
+        { name: 'label', pbrMetallicRoughness: { baseColorTexture: { index: 0 }, metallicFactor: 0.4, roughnessFactor: 0.28 } },
+        { name: 'aluminium', pbrMetallicRoughness: { baseColorFactor: [0.82, 0.82, 0.84, 1], metallicFactor: 1, roughnessFactor: 0.25 } }
+    ];
+    const primitives = [
+        lathe([[CAN.r, CAN.labelBottom], [CAN.r, CAN.labelTop]], 0, { segments: 128 }),
+        lathe(CAN_BOTTOM, 1, { segments: 128 }),
+        lathe(CAN_TOP, 1, { segments: 128 })
+    ];
+    const images = [{ bytes: await canvasBytes(label, 'image/jpeg'), mimeType: 'image/jpeg' }];
+    return createGLB(primitives, materials, images);
+}
+
+// ---------- Contour bottle ----------
+const BOTTLE_GLASS = smoothProfile([
+    [0, 0.005], [0.014, 0.0035], [0.022, 0.0008], [0.0262, 0.0], [0.0285, 0.003], [0.0292, 0.012],
+    [0.0288, 0.024], [0.0272, 0.036], [0.0258, 0.048], [0.0266, 0.060], [0.0288, 0.074],
+    [0.0302, 0.088], [0.0304, 0.098], [0.0294, 0.110], [0.0266, 0.122], [0.0222, 0.134],
+    [0.0180, 0.146], [0.0150, 0.158], [0.0134, 0.170], [0.0127, 0.180], [0.0131, 0.1845],
+    [0.0136, 0.1875], [0.0131, 0.191]
+]);
+// Cola fills the glass up to just under the cap, a wall's thickness inside
+const LIQUID_LINE = 0.183;
+const BOTTLE_LIQUID = [
+    [0, 0.0062], [0.018, 0.0048], [0.0245, 0.004],
+    ...BOTTLE_GLASS.filter(([, y]) => y >= 0.008 && y < LIQUID_LINE).map(([r, y]) => [r * 0.93, y]),
+    [0.0127 * 0.93, LIQUID_LINE], [0, LIQUID_LINE + 0.0002]
+];
+const BOTTLE_CAP = smoothProfile([[0.0142, 0.1855], [0.0146, 0.1885], [0.0145, 0.1915], [0.0138, 0.1935], [0.010, 0.1942], [0, 0.1944]], 4);
+const BOTTLE_LABEL = BOTTLE_GLASS.filter(([, y]) => y >= 0.068 && y <= 0.11);
+const BOTTLE_HEIGHT = 0.1944;
+
+const bottleRadiusAt = y => {
+    const pts = BOTTLE_GLASS.filter(p => p[0] > 0.02 || p[1] > 0.01);
+    for (let k = 1; k < pts.length; k++) {
+        if (pts[k][1] >= y) {
+            const [r0, y0] = pts[k - 1], [r1, y1] = pts[k];
+            return r0 + (r1 - r0) * ((y - y0) / ((y1 - y0) || 1));
+        }
+    }
+    return pts[pts.length - 1][0];
+};
+
+// Vertical flutes above and below the label panel
+const fluteBand = y => smoothstep(0.008, 0.018, y) * (1 - smoothstep(0.052, 0.062, y)) +
+    smoothstep(0.112, 0.122, y) * (1 - smoothstep(0.142, 0.152, y));
+const flutes = (a, y) => 1 + 0.022 * fluteBand(y) * Math.cos(a * 12);
+// Crimped edge on the crown cap
+const crimp = (a, y) => 1 + 0.035 * (1 - smoothstep(0.189, 0.1915, y)) * Math.cos(a * 21);
+
+function drawBottleLabel() {
+    let arc = 0;
+    for (let k = 1; k < BOTTLE_LABEL.length; k++) {
+        arc += Math.hypot(BOTTLE_LABEL[k][0] - BOTTLE_LABEL[k - 1][0], BOTTLE_LABEL[k][1] - BOTTLE_LABEL[k - 1][1]);
+    }
+    const W = 2048;
+    const H = Math.round(W * arc / (TAU * 0.0302));
+    const c = document.createElement('canvas');
+    c.width = W; c.height = H;
+    const g = c.getContext('2d');
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+    g.fillStyle = '#ffffff';
+    fitFont(g, 'Coca-Cola', '400', 'Yellowtail, cursive', W * 0.3, H * 0.62);
+    [W / 2, 0, W].forEach(x => g.fillText('Coca-Cola', x, H * 0.5));
+    return c;
+}
+
+async function buildBottle(label) {
+    const materials = [
+        {
+            name: 'glass',
+            pbrMetallicRoughness: { baseColorFactor: [0.82, 0.95, 0.88, 1], metallicFactor: 0, roughnessFactor: 0.04 },
+            extensions: {
+                KHR_materials_transmission: { transmissionFactor: 1 },
+                KHR_materials_ior: { ior: 1.5 },
+                KHR_materials_volume: { thicknessFactor: 0.004, attenuationDistance: 0.05, attenuationColor: [0.75, 0.92, 0.82] }
+            }
+        },
+        { name: 'cola', pbrMetallicRoughness: { baseColorFactor: [0.09, 0.028, 0.012, 1], metallicFactor: 0, roughnessFactor: 0.15 } },
+        { name: 'print', alphaMode: 'BLEND', pbrMetallicRoughness: { baseColorTexture: { index: 0 }, metallicFactor: 0, roughnessFactor: 0.45 } },
+        { name: 'cap', pbrMetallicRoughness: { baseColorFactor: [0.75, 0.04, 0.06, 1], metallicFactor: 0.6, roughnessFactor: 0.32 } }
+    ];
+    const primitives = [
+        lathe(BOTTLE_GLASS, 0, { segments: 96, radial: flutes }),
+        lathe(BOTTLE_LIQUID, 1, { segments: 64 }),
+        lathe(BOTTLE_LABEL, 2, { segments: 128, scale: 1.004 }),
+        lathe(BOTTLE_CAP, 3, { segments: 84, radial: crimp })
+    ];
+    const images = [{ bytes: await canvasBytes(label, 'image/png'), mimeType: 'image/png' }];
+    return createGLB(primitives, materials, images);
+}
+
+// ---------- Card art (2D, drawn from the same labels/profiles) ----------
+const CARD_W = 280, CARD_H = 520, CARD_BASE = 505;
+
+function drawCanCard(label) {
+    const c = document.createElement('canvas');
+    c.width = CARD_W; c.height = CARD_H;
+    const g = c.getContext('2d');
+    const k = 240 / (CAN.r * 2);
+    const cx = CARD_W / 2, half = CAN.r * k, x0 = cx - half, x1 = cx + half;
+    const Y = y => CARD_BASE - y * k;
+    const bodyTop = Y(CAN.labelTop), bodyBottom = Y(CAN.labelBottom);
+    const lidY = Y(0.1215), lidR = 0.0275 * k, baseY = Y(0.0015), baseR = 0.0265 * k;
+
+    const can = new Path2D();
+    can.moveTo(x0, bodyTop);
+    can.bezierCurveTo(x0, bodyTop - 26, cx - lidR - 6, lidY + 28, cx - lidR, lidY);
+    can.ellipse(cx, lidY, lidR, 10, 0, Math.PI, 0);
+    can.bezierCurveTo(cx + lidR + 6, lidY + 28, x1, bodyTop - 26, x1, bodyTop);
+    can.lineTo(x1, bodyBottom);
+    can.bezierCurveTo(x1, bodyBottom + 18, cx + baseR + 8, baseY - 10, cx + baseR, baseY);
+    can.ellipse(cx, baseY, baseR, 8, 0, 0, Math.PI);
+    can.bezierCurveTo(cx - baseR - 8, baseY - 10, x0, bodyBottom + 18, x0, bodyBottom);
+    can.closePath();
+
+    const metal = g.createLinearGradient(x0, 0, x1, 0);
+    metal.addColorStop(0, '#8d9096');
+    metal.addColorStop(0.3, '#eceef1');
+    metal.addColorStop(0.55, '#b9bcc2');
+    metal.addColorStop(1, '#6f7278');
+    g.fillStyle = metal;
+    g.fill(can);
+
+    // Wrap the front half of the label onto the cylinder
+    for (let x = Math.floor(x0); x < x1; x++) {
+        const nx = Math.min(Math.max((x + 0.5 - cx) / half, -1), 1);
+        const u = 0.5 + Math.asin(nx) / TAU;
+        g.drawImage(label, u * label.width, 0, 1, label.height, x, bodyTop, 1, bodyBottom - bodyTop);
+    }
+
+    // Cylinder shading over everything drawn so far
+    const shade = g.createLinearGradient(x0, 0, x1, 0);
+    shade.addColorStop(0, 'rgba(0,0,0,0.55)');
+    shade.addColorStop(0.1, 'rgba(0,0,0,0.18)');
+    shade.addColorStop(0.27, 'rgba(255,255,255,0.32)');
+    shade.addColorStop(0.36, 'rgba(255,255,255,0.05)');
+    shade.addColorStop(0.65, 'rgba(0,0,0,0.04)');
+    shade.addColorStop(0.88, 'rgba(0,0,0,0.3)');
+    shade.addColorStop(1, 'rgba(0,0,0,0.6)');
+    g.globalCompositeOperation = 'source-atop';
+    g.fillStyle = shade;
+    g.fillRect(0, 0, CARD_W, CARD_H);
+    g.globalCompositeOperation = 'source-over';
+
+    // Lid
+    const lid = g.createLinearGradient(0, lidY - 10, 0, lidY + 10);
+    lid.addColorStop(0, '#f2f3f5');
+    lid.addColorStop(1, '#9ea2a8');
+    g.fillStyle = lid;
+    g.beginPath();
+    g.ellipse(cx, lidY, lidR, 10, 0, 0, TAU);
+    g.fill();
+    g.strokeStyle = 'rgba(0,0,0,0.25)';
+    g.lineWidth = 1.5;
+    g.beginPath();
+    g.ellipse(cx, lidY + 1, lidR * 0.88, 7, 0, 0, TAU);
+    g.stroke();
+    g.fillStyle = '#c9ccd1';
+    g.beginPath();
+    g.roundRect(cx - 14, lidY - 3, 28, 8, 4);
+    g.fill();
+    return c;
+}
+
+function drawBottleCard() {
+    const c = document.createElement('canvas');
+    c.width = CARD_W; c.height = CARD_H;
+    const g = c.getContext('2d');
+    const k = 470 / BOTTLE_HEIGHT;
+    const cx = CARD_W / 2;
+    const Y = y => CARD_BASE - y * k;
+    const pts = BOTTLE_GLASS.filter(p => p[0] > 0.02 || p[1] > 0.01);
+
+    const glass = new Path2D();
+    pts.forEach(([r, y], i) => i ? glass.lineTo(cx - r * k, Y(y)) : glass.moveTo(cx - r * k, Y(y)));
+    for (let i = pts.length - 1; i >= 0; i--) glass.lineTo(cx + pts[i][0] * k, Y(pts[i][1]));
+    glass.closePath();
+
+    g.fillStyle = 'rgba(175, 215, 195, 0.28)';
+    g.fill(glass);
+
+    g.save();
+    g.clip(glass);
+    const halfW = 0.0305 * k;
+    const cola = g.createLinearGradient(cx - halfW, 0, cx + halfW, 0);
+    cola.addColorStop(0, '#0d0302');
+    cola.addColorStop(0.24, '#3a1408');
+    cola.addColorStop(0.32, '#5c230e');
+    cola.addColorStop(0.55, '#2a0d05');
+    cola.addColorStop(1, '#070101');
+    g.fillStyle = cola;
+    g.fillRect(0, Y(LIQUID_LINE), CARD_W, CARD_H);
+
+    // Flutes and highlights follow the contour
+    const contour = (f, y0, y1) => {
+        g.beginPath();
+        for (let y = y0; y <= y1; y += 0.001) g.lineTo(cx + f * bottleRadiusAt(y) * k, Y(y));
+        g.stroke();
+    };
+    g.strokeStyle = 'rgba(255,255,255,0.1)';
+    g.lineWidth = 1.5;
+    [-0.7, -0.35, 0, 0.35, 0.7].forEach(f => { contour(f, 0.01, 0.06); contour(f, 0.114, 0.15); });
+    g.strokeStyle = 'rgba(255,255,255,0.38)';
+    g.lineWidth = 5;
+    contour(-0.58, 0.012, 0.186);
+    g.strokeStyle = 'rgba(255,255,255,0.18)';
+    g.lineWidth = 2;
+    contour(0.72, 0.015, 0.18);
+    g.restore();
+
+    g.strokeStyle = 'rgba(255,255,255,0.3)';
+    g.lineWidth = 1.5;
+    g.stroke(glass);
+
+    // Painted white script on the label panel
+    g.fillStyle = '#ffffff';
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+    fitFont(g, 'Coca-Cola', '400', 'Yellowtail, cursive', bottleRadiusAt(0.09) * k * 1.3, 60);
+    g.fillText('Coca-Cola', cx, Y(0.09));
+
+    // Crown cap
+    const capR = 0.0146 * k, capTop = Y(0.1944), capBottom = Y(0.1855);
+    const cap = g.createLinearGradient(cx - capR, 0, cx + capR, 0);
+    cap.addColorStop(0, '#7d0a12');
+    cap.addColorStop(0.35, '#f03a45');
+    cap.addColorStop(1, '#6a070e');
+    g.fillStyle = cap;
+    g.beginPath();
+    g.roundRect(cx - capR, capTop, capR * 2, capBottom - capTop, 3);
+    g.fill();
+    g.strokeStyle = 'rgba(0,0,0,0.25)';
+    g.lineWidth = 1;
+    for (let x = cx - capR + 4; x < cx + capR; x += 5) {
+        g.beginPath();
+        g.moveTo(x, capTop + 8);
+        g.lineTo(x, capBottom);
+        g.stroke();
+    }
+    return c;
+}
+
+// ---------- Build everything ----------
+function revealCan() {
+    modelViewer.classList.add('is-ready');
+}
+modelViewer.addEventListener('load', revealCan);
+
+async function buildProducts() {
+    // Labels need the script font; don't wait forever if it's blocked
+    await Promise.race([
+        Promise.all([
+            document.fonts.load('100px "Yellowtail"'),
+            document.fonts.load('900 40px "Outfit"'),
+            document.fonts.load('700 40px "Outfit"')
+        ]),
+        new Promise(r => setTimeout(r, 3000))
+    ]).catch(() => {});
+
+    for (const [key, product] of Object.entries(PRODUCTS)) {
+        try {
+            const label = product.kind === 'can' ? drawCanLabel(product.label) : drawBottleLabel();
+            const glb = product.kind === 'can' ? await buildCan(label) : await buildBottle(label);
+            product.modelUrl = URL.createObjectURL(new Blob([glb], { type: 'model/gltf-binary' }));
+
+            const img = document.querySelector(`.card[data-flavor="${key}"] img`);
+            img.addEventListener('load', () => img.classList.add('is-ready'), { once: true });
+            img.src = (product.kind === 'can' ? drawCanCard(label) : drawBottleCard()).toDataURL('image/png');
+        } catch (e) {
+            console.error(`Building ${key} failed`, e);
+        }
+        if (key === currentFlavor && product.modelUrl) {
+            modelViewer.setAttribute('src', product.modelUrl);
+        }
+    }
+}
+buildProducts();
+
+cards.forEach(card => {
+    card.addEventListener('click', () => {
+        if (isSwitching) return;
+        if (card.dataset.flavor === currentFlavor) return;
+        cards.forEach(c => c.classList.remove('active'));
+        card.classList.add('active');
+        const flavor = card.dataset.flavor;
+        switchFlavor(flavor);
+    });
+});
+
+// Arrows step through the products
+document.querySelectorAll('.nav-arrow').forEach((arrow, dir) => {
+    arrow.addEventListener('click', () => {
+        if (isSwitching) return;
+        const list = [...cards];
+        const i = list.findIndex(c => c.classList.contains('active'));
+        const next = list[(i + (dir === 0 ? -1 : 1) + list.length) % list.length];
+        next.click();
+    });
+});
+
+async function switchFlavor(flavor) {
+    if (isSwitching) return;
+    isSwitching = true;
+    const body = document.body;
+    const berries = document.querySelectorAll('.berry');
+    const heroCenter = document.querySelector('.hero-center');
+
+    // 1. Background Animation
+    const targetColors = PRODUCTS[flavor].bg;
+
+    gsap.to(body, {
+        '--bg-inner': targetColors.inner,
+        '--bg-mid': targetColors.mid,
+        '--bg-outer': targetColors.outer,
+        duration: 1.5,
+        ease: 'power2.inOut'
+    });
+
+    // 2. Can Spin Animation (Simple 360 spin + blur with back settle)
+    const spinObj = { val: 0, blur: 0 };
+    gsap.to(spinObj, {
+        val: 360,
+        blur: 15,
+        duration: 0.6,
+        ease: "power2.in",
+        onUpdate: () => {
+            switchSpin = spinObj.val;
+            modelViewer.style.filter = `blur(${spinObj.blur}px)`;
+        },
+        onComplete: () => {
+            // SWAP at peak: new product model
+            currentFlavor = flavor;
+            body.dataset.flavor = flavor;
+            if (PRODUCTS[flavor].modelUrl) {
+                modelViewer.setAttribute('src', PRODUCTS[flavor].modelUrl);
+                modelViewer.setAttribute('alt', PRODUCTS[flavor].kind === 'can' ? 'Coca-Cola 3D can' : 'Coca-Cola 3D glass bottle');
+            }
+
+            gsap.to(spinObj, {
+                val: 720,
+                blur: 0,
+                duration: 1.5,
+                ease: "back.out(0.7)",
+                onUpdate: () => {
+                    switchSpin = spinObj.val;
+                    modelViewer.style.filter = `blur(${spinObj.blur}px)`;
+                },
+                onComplete: () => {
+                    switchSpin = 0;
+                    modelViewer.style.filter = 'none';
+                }
+            });
+        }
+    });
+
+    // 3. Berries "Hide & Reveal" with Dynamic Positioning
+    let completedBerries = 0;
+    berries.forEach((berry, i) => {
+        const bW = berry.offsetWidth / 2;
+        const bH = berry.offsetHeight / 2;
+        const centerX = (window.innerWidth / 2 - berry.offsetLeft - bW);
+        const centerY = (window.innerHeight / 2 - berry.offsetTop - bH);
+
+        const startAngle = parseFloat(berry.dataset.angle) || 0;
+        const currentBaseX = parseFloat(berry.dataset.baseX) || 0;
+        const currentBaseY = parseFloat(berry.dataset.baseY) || 0;
+
+        // New random target position - Increased range for visibility
+        const nextBaseX = (Math.random() - 0.5) * 200;
+        const nextBaseY = (Math.random() - 0.5) * 200;
+
+        gsap.set(berry, {
+            rotation: startAngle,
+            x: currentBaseX,
+            y: currentBaseY
+        });
+
+        const berryTl = gsap.timeline();
+
+        berryTl.to(berry, {
+            x: centerX,
+            y: centerY,
+            rotation: startAngle + 45,
+            scale: 0.1,
+            opacity: 0,
+            duration: 0.5,
+            ease: "power2.in",
+            onComplete: () => {
+                const nextSrc = PRODUCTS[flavor].berry;
+                if (berry.src !== nextSrc) berry.src = nextSrc;
+                heroCenter.style.zIndex = 50;
+            }
+        })
+        .to(berry, {
+            duration: 0.3
+        })
+        .to(berry, {
+            onStart: () => {
+                heroCenter.style.zIndex = 1;
+            },
+            x: nextBaseX,
+            y: nextBaseY,
+            rotation: startAngle + 90,
+            scale: 1,
+            opacity: 1,
+            duration: 0.9,
+            ease: "back.out(1.5)",
+            onComplete: () => {
+                berry.dataset.angle = startAngle + 90;
+                berry.dataset.baseX = nextBaseX;
+                berry.dataset.baseY = nextBaseY;
+                berry.dataset.rx = 0;
+                berry.dataset.ry = 0;
+
+                completedBerries++;
+                if (completedBerries === berries.length) {
+                    isSwitching = false;
+                }
+            }
+        });
+    });
+}
+
+
+// Track berry states for smoothing
+allBerries.forEach(b => {
+    b.dataset.rx = 0; b.dataset.ry = 0; b.dataset.angle = Math.random() * 360;
+    b.dataset.baseX = 0; b.dataset.baseY = 0;
+    b.dataset.targetRx = 0; b.dataset.targetRy = 0;
+});
+
+let mouse = { x: 0, y: 0, px: 0, py: 0 };
+let currentMouse = { x: 0, y: 0 };
+
+window.addEventListener('mousemove', (e) => {
+    mouse.x = (e.clientX / window.innerWidth) - 0.5;
+    mouse.y = (e.clientY / window.innerHeight) - 0.5;
+    mouse.px = e.clientX;
+    mouse.py = e.clientY;
+});
+
+function animate() {
+    const time = Date.now() * 0.001;
+    // Target camera position based on mouse
+    // Smoothly interpolate current mouse to target mouse
+    currentMouse.x += (mouse.x - currentMouse.x) * 0.05;
+    currentMouse.y += (mouse.y - currentMouse.y) * 0.05;
+
+    // Tilt the product can + add switch spin
+    modelViewer.cameraOrbit = `${(currentMouse.x * 40) + switchSpin}deg ${90 + (currentMouse.y * 20)}deg 380%`;
+
+    // Update parallax containers - Always
+    berriesFG.style.transform = `translate(${currentMouse.x * 60}px, ${currentMouse.y * 60}px)`;
+    berriesBG.style.transform = `translate(${currentMouse.x * -30}px, ${currentMouse.y * -30}px)`;
+    leavesBG.style.transform = `translate(${currentMouse.x * -15}px, ${currentMouse.y * -15}px)`;
+
+    // Update each berry with its own smoothing and float - ONLY IF NOT SWITCHING
+    if (!isSwitching) {
+        allBerries.forEach((berry, i) => {
+            const berryRect = berry.getBoundingClientRect();
+            const berryX = berryRect.left + berryRect.width / 2;
+            const berryY = berryRect.top + berryRect.height / 2;
+
+            const diffX = mouse.px - berryX;
+            const diffY = mouse.py - berryY;
+            const distance = Math.sqrt(diffX * diffX + diffY * diffY);
+
+            let targetRx = 0, targetRy = 0, speedMult = 1;
+
+            if (distance < 400) {
+                const force = (400 - distance) / 400;
+                targetRx = (diffX / distance) * force * -80;
+                targetRy = (diffY / distance) * force * -80;
+                speedMult = 1 + force * 5;
+            }
+
+            // Lerp repulsion values
+            let rx = parseFloat(berry.dataset.rx) || 0;
+            let ry = parseFloat(berry.dataset.ry) || 0;
+            let angle = parseFloat(berry.dataset.angle) || 0;
+            let baseX = parseFloat(berry.dataset.baseX) || 0;
+            let baseY = parseFloat(berry.dataset.baseY) || 0;
+
+            rx += (targetRx - rx) * 0.1;
+            ry += (targetRy - ry) * 0.1;
+            angle += 0.2 * speedMult;
+
+            berry.dataset.rx = rx;
+            berry.dataset.ry = ry;
+            berry.dataset.angle = angle;
+
+            // Floating effect
+            const dur = [5, 7, 6, 8, 5.5, 6.5, 9, 11, 10][i % 9];
+            const phase = (time + i * 0.7) * (Math.PI * 2 / dur);
+            const floatY = Math.sin(phase) * 15;
+            const floatAngle = Math.cos(phase) * 6;
+
+            berry.style.transform = `translate(calc(${rx + baseX}px), calc(${ry + baseY}px + ${floatY}px)) rotate(calc(${angle}deg + ${floatAngle}deg))`;
+        });
+    }
+
+    // Update leaves with float - ALWAYS
+    document.querySelectorAll('.leaf').forEach((leaf, i) => {
+        const dur = 10 + i * 2;
+        const phase = (time + i * 1.2) * (Math.PI * 2 / dur);
+        const floatY = Math.sin(phase) * 20;
+        const floatX = Math.cos(phase * 0.5) * 15;
+        const floatAngle = Math.sin(phase * 0.3) * 15;
+        leaf.style.transform = `translate(${floatX}px, ${floatY}px) rotate(${floatAngle}deg)`;
+    });
+
+    requestAnimationFrame(animate);
+}
+
+animate();
+
+// Bubbles Generator using bubble.png
+const bubblesContainer = document.getElementById('bubbles-container');
+function createBubble() {
+    if (!bubblesContainer) return;
+    const bubble = document.createElement('img');
+    bubble.src = ASSETS.bubble;
+    bubble.className = 'bubble-img';
+    const size = Math.random() * 20 + 10 + 'px';
+    bubble.style.width = size;
+    bubble.style.height = 'auto';
+    bubble.style.left = Math.random() * 100 + '%';
+    bubble.style.bottom = '-50px';
+    bubble.style.opacity = Math.random() * 0.4 + 0.2;
+
+    const duration = Math.random() * 6 + 4;
+    bubble.style.animation = `floatUpImg ${duration}s linear forwards`;
+
+    bubblesContainer.appendChild(bubble);
+    setTimeout(() => bubble.remove(), duration * 1000);
+}
+setInterval(createBubble, 400);
+```
+
+## Assets
+
+`ASSET_BASE_URL = https://api.getlayers.ai/storage/v1/object/public/public/assets/soda-14ff8a788d`
+
+- `leaves.glb`: floating leaves
+- `cherry.glb`: berries for Classic and the bottle
+- `blueberry.glb`: berries for Zero Sugar
+- `bubble.png`: rising bubbles
+
+The Coca-Cola can, the Zero Sugar can, the contour bottle and all card images are generated by the
+script, so no product files are needed.
